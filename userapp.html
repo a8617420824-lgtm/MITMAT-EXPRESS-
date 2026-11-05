@@ -1,0 +1,2239 @@
+<!DOCTYPE html>
+<html lang="bn" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>BatchBite - Village Food Delivery</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Razorpay Checkout SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Hind Siliguri', 'Noto Sans Devanagari', 'Inter', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c'
+            }
+          },
+          screens: {
+            'xs': '420px'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+
+    /* Hide horizontal scrollbar for clean mobile sliding */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Mobile touch improvements */
+    html { -webkit-tap-highlight-color: transparent; }
+    
+    @keyframes phonePulse {
+      0%, 100% { transform: scale(1); opacity: 0.95; }
+      50% { transform: scale(1.03); opacity: 1; box-shadow: 0 0 10px rgba(249, 115, 22, 0.4); }
+    }
+    .animate-phone-glow {
+      animation: phonePulse 2.5s infinite ease-in-out;
+    }
+
+    @keyframes starTwinkle {
+      0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 2px #f59e0b);
+        opacity: 0.95;
+      }
+      50% {
+        transform: scale(1.08);
+        filter: drop-shadow(0 0 6px #fbbf24) drop-shadow(0 0 10px #f59e0b);
+        opacity: 1;
+      }
+    }
+    .animate-star-glow {
+      animation: starTwinkle 2s infinite ease-in-out;
+      display: inline-flex;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased min-h-screen flex flex-col font-sans transition-colors duration-300 pb-16 sm:pb-0">
+
+  <!-- AUTHENTICATION SCREEN -->
+  <div id="authScreen" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-md overflow-y-auto">
+    <div class="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col my-auto">
+      <div class="relative h-32 sm:h-36 bg-gradient-to-r from-orange-600 to-amber-500 p-5 sm:p-6 flex flex-col justify-end text-white overflow-hidden">
+        <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80" 
+             class="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-30">
+        <div class="relative z-10">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-1.5 sm:mb-2">
+            <i class="fa-solid fa-bowl-food text-lg sm:text-xl text-white"></i>
+          </div>
+          <h2 class="text-lg sm:text-xl font-bold leading-tight" data-i18n="appTitle">BatchBite ফুড ডেলিভারি</h2>
+          <p class="text-[11px] sm:text-xs text-orange-100" data-i18n="appTagline">টাটকা নাস্তা ও খাবার সরাসরি আপনার এলাকায়</p>
+        </div>
+      </div>
+
+      <div class="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-xs font-bold text-slate-500 dark:text-slate-400">
+        <button id="authTabLogin" onclick="switchAuthTab('login')" class="flex-1 py-3 border-b-2 border-brand-600 text-brand-600 dark:text-brand-500 transition">
+          <i class="fa-solid fa-right-to-bracket mr-1"></i> <span data-i18n="tabLogin">লগইন (Login)</span>
+        </button>
+        <button id="authTabRegister" onclick="switchAuthTab('register')" class="flex-1 py-3 border-b-2 border-transparent hover:text-slate-700 dark:hover:text-slate-200 transition">
+          <i class="fa-solid fa-user-plus mr-1"></i> <span data-i18n="tabRegister">রেজিস্ট্রেশন রিকোয়েস্ট</span>
+        </button>
+      </div>
+
+      <div class="p-4 sm:p-6">
+        <div id="authAlert" class="hidden mb-4 p-3 rounded-xl text-xs font-medium"></div>
+
+        <!-- LOGIN FORM -->
+        <form id="loginForm" onsubmit="handleUserLogin(event)" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="labelEmail">ইমেইল এড্রেস</label>
+            <div class="relative">
+              <i class="fa-solid fa-envelope absolute left-3 top-3 text-slate-400 text-xs"></i>
+              <input required type="email" id="loginEmail" placeholder="name@example.com" class="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-xl focus:ring-2 focus:ring-brand-500 outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="labelPassword">পাসওয়ার্ড</label>
+            <div class="relative">
+              <i class="fa-solid fa-lock absolute left-3 top-3 text-slate-400 text-xs"></i>
+              <input required type="password" id="loginPassword" placeholder="••••••••" class="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-xl focus:ring-2 focus:ring-brand-500 outline-none">
+            </div>
+          </div>
+          <button type="submit" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition" data-i18n="btnLogin">
+            লগইন করুন
+          </button>
+          <p class="text-[11px] text-center text-slate-500 dark:text-slate-400 mt-2">
+            <span data-i18n="noAccountPrompt">অ্যাকাউন্ট নেই?</span> 
+            <a href="javascript:void(0)" onclick="switchAuthTab('register')" class="text-brand-600 dark:text-brand-400 font-bold hover:underline" data-i18n="linkSendReq">রেজিস্টার রিকোয়েস্ট পাঠান</a>
+          </p>
+        </form>
+
+        <!-- REGISTER REQUEST FORM -->
+        <form id="registerForm" onsubmit="handleRegisterRequest(event)" class="hidden space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="labelName">আপনার নাম</label>
+            <input required type="text" id="regName" data-i18n-ph="phName" placeholder="পুরো নাম লিখুন" class="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-xl focus:ring-2 focus:ring-brand-500 outline-none">
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="labelPhone">মোবাইল নম্বর</label>
+              <input required type="tel" pattern="[0-9]{10,11}" id="regPhone" data-i18n-ph="phPhone" placeholder="017... / 98..." class="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-xl focus:ring-2 focus:ring-brand-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="labelVillage">গ্রাম / এলাকা</label>
+              <input required type="text" id="regVillage" data-i18n-ph="phVillage" placeholder="গ্রামের নাম" class="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-xl focus:ring-2 focus:ring-brand-500 outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="labelEmail">ইমেইল এড্রেস</label>
+            <input required type="email" id="regEmail" placeholder="name@example.com" class="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-xl focus:ring-2 focus:ring-brand-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="labelSetPassword">পাসওয়ার্ড নির্ধারণ করুন</label>
+            <input required type="password" minlength="4" id="regPassword" data-i18n-ph="phPass" placeholder="কমপক্ষে ৪ অক্ষরের পাসওয়ার্ড" class="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-xl focus:ring-2 focus:ring-brand-500 outline-none">
+          </div>
+          <div class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 p-2.5 rounded-xl text-[11px] leading-tight">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i> <strong data-i18n="alertNotice">সতর্কবার্তা:</strong> <span data-i18n="regNoticeText">রেজিস্ট্রেশনের পর এডমিন প্যানেল থেকে অ্যাকাউন্ট অনুমোদন (Approve) করলেই কেবল আপনি লগইন করতে পারবেন।</span>
+          </div>
+          <button type="submit" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition" data-i18n="btnSendReg">
+            রেজিস্ট্রেশন রিকোয়েস্ট পাঠান
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS BANNER -->
+  <div id="statusBanner" class="py-2 px-3 sm:px-4 text-center text-xs sm:text-sm font-semibold transition-colors duration-300 bg-amber-500 text-white flex items-center justify-center gap-2 shadow-sm">
+    <span class="inline-block w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full animate-ping bg-white"></span>
+    <span id="bannerText" class="truncate">Checking batch ordering schedule...</span>
+  </div>
+
+  <!-- MAIN HEADER -->
+  <header class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+    <div class="max-w-6xl mx-auto px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-2">
+      
+      <!-- Brand Logo & Name -->
+      <div class="flex items-center gap-2 sm:gap-2.5 min-w-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand-500 text-white flex-shrink-0 flex items-center justify-center shadow-md shadow-brand-500/20">
+          <i id="headerLogoIcon" class="fa-solid fa-bowl-food text-lg sm:text-xl"></i>
+        </div>
+        <div class="min-w-0">
+          <h1 id="brandName" class="font-black text-base sm:text-xl text-slate-900 dark:text-white leading-tight truncate">BatchBite</h1>
+          <p id="brandTagline" class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate hidden xs:block">Fresh Evening Snacks • Village Batch Delivery</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+        <!-- FAQ MODAL BUTTON -->
+        <button onclick="toggleFaqModal(true)" class="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center transition shadow-sm" title="Frequently Asked Questions (FAQ)">
+          <i class="fa-solid fa-circle-question text-sm sm:text-base text-brand-600 dark:text-brand-400"></i>
+        </button>
+
+        <!-- NOTIFICATIONS BUTTON -->
+        <button onclick="toggleNotificationModal(true)" id="notifBtn" class="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center transition shadow-sm" title="Notifications">
+          <i class="fa-solid fa-bell text-sm sm:text-base text-brand-600 dark:text-brand-400"></i>
+          <span id="notifBadge" class="hidden absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">0</span>
+        </button>
+
+        <!-- CART BUTTON -->
+        <button id="cartBtn" onclick="toggleCartModal(true)" class="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/40 flex items-center justify-center transition shadow-sm">
+          <i class="fa-solid fa-basket-shopping text-sm sm:text-base"></i>
+          <span id="cartCountBadge" class="absolute -top-1 -right-1 bg-brand-600 text-white text-[9px] font-bold w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">0</span>
+        </button>
+
+        <!-- USER PROFILE DROPDOWN -->
+        <div class="relative" id="userProfileWrapper">
+          <button onclick="toggleProfileDropdown()" id="userProfileBtn" class="flex items-center gap-1.5 sm:gap-2 p-1 sm:py-1.5 sm:px-2.5 rounded-2xl bg-gradient-to-r from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-800 hover:from-orange-100 dark:hover:bg-slate-700 border border-brand-200 dark:border-slate-700 transition shadow-sm">
+            <div class="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-brand-600 to-amber-500 text-white flex items-center justify-center text-xs sm:text-sm shadow">
+              <i class="fa-solid fa-user"></i>
+              <span class="absolute bottom-0 right-0 w-2 sm:w-2.5 h-2 sm:h-2.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
+            </div>
+            <div class="text-left hidden md:block">
+              <div id="headerUserName" class="text-xs font-bold text-slate-900 dark:text-white leading-tight truncate max-w-[90px]" data-i18n="defaultCustomer">কাস্টমার</div>
+              <div class="inline-flex items-center gap-1 text-[9px] font-extrabold text-brand-700 dark:text-brand-400 bg-white/90 dark:bg-slate-900 px-1.5 py-0.2 rounded border border-brand-300 dark:border-slate-700 animate-phone-glow">
+                <i class="fa-solid fa-phone-volume text-[8px] text-brand-600"></i>
+                <span id="headerUserPhone">017XXXXXXXX</span>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-down text-slate-400 text-[9px] sm:text-[10px] ml-0.5"></i>
+          </button>
+
+          <div id="userProfileDropdown" class="hidden absolute right-0 mt-2 w-64 sm:w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-3.5 z-50 transition transform origin-top-right">
+            <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div class="w-10 h-10 rounded-full bg-brand-500 text-white flex items-center justify-center text-base font-bold shadow-md">
+                <i class="fa-solid fa-circle-user text-2xl"></i>
+              </div>
+              <div class="overflow-hidden">
+                <h4 id="dropUserName" class="font-bold text-xs text-slate-900 dark:text-white truncate">ইউজারের নাম</h4>
+                <div class="text-[11px] text-brand-600 dark:text-brand-400 font-semibold flex items-center gap-1 mt-0.5">
+                  <i class="fa-solid fa-phone text-[10px]"></i>
+                  <span id="dropUserPhone">017XXXXXXXX</span>
+                </div>
+                <div class="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                  <i class="fa-solid fa-location-dot text-slate-400 mr-0.5"></i>
+                  <span id="dropUserVillage">গ্রামের নাম</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-2 space-y-2 text-xs">
+              <button onclick="toggleMyOrdersModal(true); toggleProfileDropdown();" class="w-full text-left px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl flex items-center gap-2 font-bold">
+                <i class="fa-solid fa-box-archive text-brand-600"></i> 
+                <span data-i18n="myOrdersBtn">আমার আগের অর্ডারসমূহ</span>
+              </button>
+
+              <button onclick="toggleFaqModal(true); toggleProfileDropdown();" class="w-full text-left px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl flex items-center gap-2 font-bold">
+                <i class="fa-solid fa-circle-question text-brand-600"></i> 
+                <span data-i18n="faqBtn">সাধারণ প্রশ্নোত্তর (FAQ)</span>
+              </button>
+
+              <div class="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-1.5 border border-slate-100 dark:border-slate-800">
+                <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                  <span><i class="fa-solid fa-globe text-brand-600 mr-1"></i> <span data-i18n="langTitle">ভাষা (Language)</span></span>
+                  <span id="currentLangTag" class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300">BN</span>
+                </div>
+                <div class="grid grid-cols-3 gap-1 pt-1">
+                  <button onclick="changeLanguage('bn')" class="lang-opt-btn py-1 px-1 text-center rounded-lg text-[10px] sm:text-[11px] font-bold border transition" id="lang-btn-bn">বাংলা</button>
+                  <button onclick="changeLanguage('en')" class="lang-opt-btn py-1 px-1 text-center rounded-lg text-[10px] sm:text-[11px] font-bold border transition" id="lang-btn-en">English</button>
+                  <button onclick="changeLanguage('hi')" class="lang-opt-btn py-1 px-1 text-center rounded-lg text-[10px] sm:text-[11px] font-bold border transition" id="lang-btn-hi">हिन्दी</button>
+                </div>
+              </div>
+
+              <div class="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl flex items-center justify-between border border-slate-100 dark:border-slate-800">
+                <div class="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <i class="fa-solid fa-circle-half-stroke text-brand-600"></i>
+                  <span data-i18n="appearanceTitle">থিম / অ্যাপিয়ারেন্স</span>
+                </div>
+                <div class="flex items-center gap-1 bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <button onclick="setTheme('light')" id="themeBtnLight" class="p-1 px-2 rounded-md text-[10px] sm:text-[11px] font-bold transition flex items-center gap-1">
+                    <i class="fa-solid fa-sun text-amber-500"></i> Light
+                  </button>
+                  <button onclick="setTheme('dark')" id="themeBtnDark" class="p-1 px-2 rounded-md text-[10px] sm:text-[11px] font-bold transition flex items-center gap-1">
+                    <i class="fa-solid fa-moon text-indigo-400"></i> Dark
+                  </button>
+                </div>
+              </div>
+
+              <button onclick="handleUserLogout()" class="w-full text-left px-3 py-2 font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl flex items-center gap-2 transition">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> 
+                <span data-i18n="logoutBtn">লগআউট করুন</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CUSTOMER VIEW -->
+  <main id="customerView" class="flex-grow max-w-6xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+    <!-- HERO BATCH ORDERS SECTION CARD -->
+    <div class="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-4 sm:p-7 shadow-xl relative overflow-hidden">
+      <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+        <div>
+          <span id="windowBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> <span id="heroBadgeText" data-i18n="batchOpen">Batch Orders Open</span>
+          </span>
+          <h2 id="heroTitleDisplay" class="text-lg sm:text-2xl font-bold tracking-tight" data-i18n="heroTitle">Today's Evening Batch</h2>
+          <p id="heroSubtitleDisplay" class="text-xs sm:text-sm text-slate-300 mt-1 max-w-md" data-i18n="heroSubtitle">
+            সরাসরি ফ্রেশ নাস্তা ও খাবার আপনার গ্রামে পৌঁছাবে একই ব্যাচে। সময় শেষ হওয়ার আগেই অর্ডার নিশ্চিত করুন!
+          </p>
+          <div class="mt-3 flex flex-wrap items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-slate-300">
+            <span class="bg-white/10 px-2 sm:px-2.5 py-1 rounded-lg"><i class="fa-regular fa-clock mr-1 text-brand-400"></i> <span data-i18n="labelWindow">Window</span>: <strong id="windowTimeDisplay" class="text-white">4:00 PM - 6:00 PM</strong></span>
+            <span class="bg-white/10 px-2 sm:px-2.5 py-1 rounded-lg"><i class="fa-solid fa-truck-fast mr-1 text-brand-400"></i> <span data-i18n="labelDelivery">Delivery</span>: <strong id="batchDeliveryTimeDisplay" class="text-white">6:45 PM</strong></span>
+          </div>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-md rounded-2xl p-3 sm:p-5 border border-white/15 text-center min-w-full sm:min-w-[210px]">
+          <p id="timerLabel" class="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-300 font-semibold mb-0.5 sm:mb-1" data-i18n="timerCloses">Window Closes In</p>
+          <div id="countdownTimer" class="text-xl sm:text-3xl font-mono font-extrabold text-brand-500 tracking-wider">
+            00:00:00
+          </div>
+          <p id="timerSubtext" class="text-[10px] text-slate-400 mt-0.5 sm:mt-1" data-i18n="timerSubtext">অর্ডার করতে নিচের মেনু দেখুন</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- HORIZONTAL SCROLLABLE CATEGORIES -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 pt-1 text-xs sm:text-sm no-scrollbar -mx-1 px-1" id="categoryContainer">
+      <button onclick="setCategoryFilter('all')" class="category-btn active px-3.5 sm:px-4 py-2 rounded-xl font-bold whitespace-nowrap bg-brand-600 text-white shadow-sm transition" data-i18n="catAll">All Items</button>
+      <button onclick="setCategoryFilter('Evening Snacks')" class="category-btn px-3.5 sm:px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition" data-i18n="catSnacks">Evening Snacks</button>
+      <button onclick="setCategoryFilter('Fast Food')" class="category-btn px-3.5 sm:px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition" data-i18n="catFastFood">Fast Food</button>
+      <button onclick="setCategoryFilter('Sweets')" class="category-btn px-3.5 sm:px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition" data-i18n="catSweets">Sweets</button>
+      <button onclick="setCategoryFilter('Beverages')" class="category-btn px-3.5 sm:px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition" data-i18n="catBeverages">Beverages</button>
+    </div>
+
+    <!-- FOOD GRID CONTAINER -->
+    <div id="foodGrid" class="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6"></div>
+  </main>
+
+  <!-- MOBILE FLOATING CART BAR (APPEARS ON PHONES WHEN CART HAS ITEMS) -->
+  <div id="mobileCartBar" class="fixed bottom-3 inset-x-3 z-40 sm:hidden hidden">
+    <button onclick="toggleCartModal(true)" class="w-full bg-brand-600 hover:bg-brand-700 text-white p-3 rounded-2xl shadow-xl flex items-center justify-between font-bold text-xs">
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center font-mono text-sm" id="mobileCartItemCount">0</span>
+        <span class="font-semibold text-[13px]" data-i18n="cartTitle">কার্ট দেখুন</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="mobileCartTotalDisplay" class="font-black text-sm">₹0</span>
+        <i class="fa-solid fa-chevron-right text-xs"></i>
+      </div>
+    </button>
+  </div>
+
+  <!-- FAQ DISPLAY MODAL -->
+  <div id="faqModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-sm hidden" role="dialog" aria-modal="true">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+      <div class="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-sm">
+            <i class="fa-solid fa-circle-question"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-xs sm:text-base text-slate-900 dark:text-white" data-i18n="faqModalTitle">সাধারণ প্রশ্নোত্তর (FAQ)</h3>
+            <p class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400" data-i18n="faqModalSub">ডেলিভারি, খাবার ও সার্ভিস সম্পর্কিত তথ্য</p>
+          </div>
+        </div>
+        <button onclick="toggleFaqModal(false)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:text-white text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="faqListContainer" class="p-3.5 sm:p-4 overflow-y-auto space-y-2.5 sm:space-y-3 flex-1 text-xs sm:text-sm"></div>
+      <div class="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-right">
+        <button onclick="toggleFaqModal(false)" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow transition" data-i18n="btnClose">
+          ঠিক আছে (Close)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REFUND REQUEST MODAL -->
+  <div id="refundModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-sm hidden" role="dialog" aria-modal="true">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div class="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-sm">
+            <i class="fa-solid fa-rotate-left"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-xs sm:text-sm text-slate-900 dark:text-white" data-i18n="refundModalTitle">রিফান্ড রিকোয়েস্ট (Refund Request)</h3>
+            <p class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400" id="refundOrderSubtitle">Order #</p>
+          </div>
+        </div>
+        <button onclick="closeRefundModal()" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:text-white text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="refundForm" onsubmit="submitRefundRequest(event)" class="p-4 sm:p-5 space-y-3.5">
+        <input type="hidden" id="refundOrderIdInput">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="labelRefundReason">রিফান্ডের কারণ নির্বাচন করুন *</label>
+          <select id="refundReasonSelect" required class="w-full text-xs font-semibold border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-brand-500">
+            <option value="Damaged Product" data-i18n="optReasonDamaged">Damaged Product (ক্ষতিগ্রস্ত খাবার)</option>
+            <option value="Missing Item" data-i18n="optReasonMissing">Missing Item (খাবারের আইটেম পাওয়া যায়নি)</option>
+            <option value="Wrong Food Received" data-i18n="optReasonWrong">Wrong Food Received (ভুল খাবার এসেছে)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="labelRefundNote">অতিরিক্ত বিবরণ (ঐচ্ছিক)</label>
+          <textarea id="refundNoteInput" data-i18n-ph="phRefundNote" rows="3" placeholder="সমস্যাটি সংক্ষেপে বিস্তারিত লিখুন..." class="w-full text-xs border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none"></textarea>
+        </div>
+        <div class="bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300">
+          <i class="fa-solid fa-circle-info mr-1"></i> <span data-i18n="refundNoticeText">আপনার রিকোয়েস্টটি এডমিন প্যানেলে যাচাই করা হবে। এডমিন অনুমোদন বা বাতিল করার সাথে সাথে আপনি নোটিফিকেশন পাবেন।</span>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeRefundModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-white rounded-xl text-xs font-bold transition" data-i18n="btnCancel">বাতিল</button>
+          <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-md" data-i18n="btnSendReq">রিকোয়েস্ট পাঠান</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- NOTIFICATIONS MODAL -->
+  <div id="notificationModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-sm hidden" role="dialog" aria-modal="true">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div class="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-sm">
+            <i class="fa-solid fa-bell"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-xs sm:text-base text-slate-900 dark:text-white" data-i18n="modalNotifTitle">নোটিফিকেশন সেন্টার</h3>
+            <p class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400" data-i18n="modalNotifSub">এডমিন থেকে পাঠানো সকল বার্তা ও নোটিশ</p>
+          </div>
+        </div>
+        <button onclick="toggleNotificationModal(false)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:text-white text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="notificationsList" class="p-3.5 sm:p-4 overflow-y-auto space-y-2.5 sm:space-y-3 flex-1 text-xs sm:text-sm"></div>
+      <div class="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-right">
+        <button onclick="toggleNotificationModal(false)" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow transition" data-i18n="btnClose">
+          ঠিক আছে (Close)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POLICY DISPLAY MODAL -->
+  <div id="policyModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-sm hidden" role="dialog" aria-modal="true">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+      <div class="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i id="policyModalIcon" class="fa-solid fa-scale-balanced text-brand-600 text-base sm:text-lg"></i>
+          <h3 id="policyModalTitle" class="font-bold text-xs sm:text-base text-slate-900 dark:text-white" data-i18n="policyDefaultTitle">নীতিমালা ও শর্তাবলী</h3>
+        </div>
+        <button onclick="closePolicyModal()" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:text-white text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="policyModalBody" class="p-4 sm:p-5 overflow-y-auto text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed space-y-3 whitespace-pre-line"></div>
+      <div class="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-right">
+        <button onclick="closePolicyModal()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow transition" data-i18n="btnClose">
+          ঠিক আছে (Close)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY ORDERS MODAL -->
+  <div id="myOrdersModal" class="fixed inset-0 z-50 overflow-hidden hidden" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="toggleMyOrdersModal(false)"></div>
+    <div class="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
+      <div class="w-screen max-w-full sm:max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col">
+        <div class="p-3.5 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-receipt text-brand-600"></i>
+            <h2 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white" data-i18n="myOrdersBtn">আমার আগের অর্ডারসমূহ</h2>
+          </div>
+          <button onclick="toggleMyOrdersModal(false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+        <div id="userOrdersList" class="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE-OVER CART & CHECKOUT MODAL -->
+  <div id="cartModal" class="fixed inset-0 z-50 overflow-hidden hidden" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" onclick="toggleCartModal(false)"></div>
+    <div class="fixed inset-y-0 right-0 pl-0 sm:pl-10 max-w-full flex">
+      <div class="w-screen max-w-full sm:max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col h-full">
+        <div class="p-3.5 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-basket-shopping text-brand-600"></i>
+            <h2 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white" data-i18n="cartTitle">আপনার কার্ট ও চেকআউট</h2>
+          </div>
+          <button onclick="toggleCartModal(false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+
+        <div class="bg-brand-50 dark:bg-brand-950/60 border-b border-brand-100 dark:border-brand-900/40 p-2.5 sm:p-3 text-[11px] sm:text-xs text-brand-700 dark:text-brand-300 flex items-start gap-2">
+          <i class="fa-solid fa-circle-info mt-0.5"></i>
+          <span><span data-i18n="cartNoticePre">এই অর্ডারটি সন্ধ্যার ব্যাচে আনুমানিক</span> <strong id="cartDeliveryTimeNotice">6:45 PM</strong> <span data-i18n="cartNoticePost">এ একসাথে পৌঁছাবে।</span></span>
+        </div>
+
+        <div id="cartItemsList" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5"></div>
+
+        <div class="p-3.5 sm:p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 sm:space-y-4">
+          <div class="space-y-1 text-xs text-slate-600 dark:text-slate-400">
+            <div class="flex justify-between">
+              <span data-i18n="labelSubtotal">সাবটোটাল:</span>
+              <span id="cartSubtotal" class="font-semibold text-slate-800 dark:text-slate-200">₹0</span>
+            </div>
+            <div class="flex justify-between">
+              <span data-i18n="labelDeliveryFee">ব্যাচ ডেলিভারি ফি:</span>
+              <span id="cartDeliveryFee" class="font-semibold text-slate-800 dark:text-slate-200">₹0</span>
+            </div>
+            <div id="cartCodFeeRow" class="flex justify-between text-amber-600 font-semibold hidden">
+              <span data-i18n="labelCodFee">ক্যাশ অন ডেলিভারি ফি:</span>
+              <span id="cartCodFeeAmount">+₹0</span>
+            </div>
+            <div class="flex justify-between text-sm font-bold text-slate-900 dark:text-white pt-1 border-t dark:border-slate-800">
+              <span data-i18n="labelTotalBill">মোট প্রদেয় বিল:</span>
+              <span id="cartGrandTotal" class="text-brand-600 dark:text-brand-400 font-extrabold">₹0</span>
+            </div>
+          </div>
+
+          <!-- CHECKOUT FORM -->
+          <form id="checkoutForm" onsubmit="handlePlaceOrder(event)" class="space-y-2 sm:space-y-2.5 pt-1">
+            <div>
+              <input required type="text" id="custName" data-i18n-ph="phCustName" placeholder="পূর্ণ নাম" class="w-full text-xs border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg p-2 sm:p-2.5 focus:ring-1 focus:ring-brand-500 outline-none">
+            </div>
+            <div>
+              <input required type="tel" id="custPhone" data-i18n-ph="phCustPhone" placeholder="মোবাইল নম্বর" class="w-full text-xs border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg p-2 sm:p-2.5 focus:ring-1 focus:ring-brand-500 outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <input required type="text" id="custVillage" data-i18n-ph="phCustVillage" placeholder="গ্রাম / এলাকা" class="w-full text-xs border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg p-2 sm:p-2.5 focus:ring-1 focus:ring-brand-500 outline-none">
+              <input required type="text" id="custLandmark" data-i18n-ph="phCustLandmark" placeholder="বাড়ি / ল্যান্ডমার্ক" class="w-full text-xs border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg p-2 sm:p-2.5 focus:ring-1 focus:ring-brand-500 outline-none">
+            </div>
+
+            <!-- PAYMENT METHOD OPTIONS -->
+            <div>
+              <label class="block text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1" data-i18n="labelPayMethod">পেমেন্ট মেথড</label>
+              <div class="grid grid-cols-1 xs:grid-cols-2 gap-2" id="paymentOptionsGroup">
+                <label id="paymentCodLabel" class="flex items-center gap-1.5 text-xs border dark:border-slate-700 p-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  <input type="radio" name="custPayment" id="payRadioCod" value="Cash on Delivery" onchange="onPaymentMethodChanged()" class="text-brand-600">
+                  <span id="payCodText">ক্যাশ অন ডেলিভারি</span>
+                </label>
+                <label id="paymentUpiLabel" class="flex items-center gap-1.5 text-xs border dark:border-slate-700 p-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  <input type="radio" name="custPayment" id="payRadioUpi" value="Razorpay Online" onchange="onPaymentMethodChanged()" class="text-brand-600">
+                  <span id="payUpiText"><i class="fa-solid fa-bolt text-amber-500"></i> Razorpay (UPI / Cards)</span>
+                </label>
+              </div>
+            </div>
+
+            <div id="razorpayNoticeBox" class="hidden p-2 sm:p-2.5 bg-blue-50 dark:bg-slate-800/80 border border-blue-200 dark:border-slate-700 rounded-xl text-[10px] sm:text-[11px] text-blue-800 dark:text-blue-300 flex items-center gap-2">
+              <i class="fa-solid fa-shield-halved text-brand-600 text-sm sm:text-base"></i>
+              <span data-i18n="razorpayPrompt">কনফার্ম বাটনে ক্লিক করলেই Razorpay পপ-আপ ওপেন হবে এবং নিরাপদ অনলাইন পেমেন্ট করতে পারবেন।</span>
+            </div>
+
+            <div class="pt-0.5">
+              <label class="flex items-start gap-2 text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-400 cursor-pointer select-none bg-slate-50 dark:bg-slate-800/60 p-2 sm:p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                <input required type="checkbox" id="termsAgreementCheckbox" class="mt-0.5 rounded text-brand-600 focus:ring-brand-500 w-3.5 h-3.5 cursor-pointer">
+                <span class="leading-tight">
+                  <span data-i18n="termsAgree1">আমি সাইটের</span> 
+                  <button type="button" onclick="openPolicyModal('terms')" class="text-brand-600 font-bold underline" data-i18n="termsAgree2">ব্যবহারের শর্তাবলী</button>, 
+                  <button type="button" onclick="openPolicyModal('privacy')" class="text-brand-600 font-bold underline" data-i18n="termsAgree3">প্রাইভেসি পলিসি</button> 
+                  <span data-i18n="termsAgree4">ও</span> 
+                  <button type="button" onclick="openPolicyModal('refund')" class="text-brand-600 font-bold underline" data-i18n="termsAgree5">রিফান্ড নীতিমালা</button> 
+                  <span data-i18n="termsAgree6">মেনে খাবার অর্ডার করছি।</span>
+                </span>
+              </label>
+            </div>
+            
+            <button type="submit" id="submitOrderBtn" class="w-full py-2.5 sm:py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition" data-i18n="btnConfirmOrder">
+              অর্ডার কনফার্ম করুন
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER SECTION -->
+  <footer class="bg-slate-900 text-slate-300 border-t border-slate-800 mt-10 sm:mt-14 transition-colors">
+    <div class="max-w-6xl mx-auto px-4 pt-8 sm:pt-12 pb-6 sm:pb-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-8">
+        
+        <!-- Brand / About -->
+        <div class="space-y-3">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-brand-500 text-white flex items-center justify-center font-bold">
+              <i class="fa-solid fa-utensils"></i>
+            </div>
+            <span id="footerBrandName" class="text-lg font-black text-white">BatchBite</span>
+          </div>
+          <p id="footerAboutText" class="text-xs text-slate-400 leading-relaxed" data-i18n="footerAbout">
+            গ্রামাঞ্চলের মানুষদের জন্য প্রতিদিনের টাটকা বিকেলের নাস্তা ও খাবার সরাসরি এক ব্যাচে নিরাপদে পৌঁছে দেওয়ার নির্ভরযোগ্য প্লাটফর্ম।
+          </p>
+          <div class="text-[11px] text-slate-400 flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved text-brand-500"></i> <span data-i18n="qualityPledge">১০০% মানসম্মত ও স্বাস্থ্যকর খাবার</span>
+          </div>
+        </div>
+
+        <!-- Social Media -->
+        <div class="space-y-3">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-white border-b border-slate-800 pb-2" data-i18n="footerSocialTitle">
+            আমাদের সোশ্যাল মিডিয়া
+          </h4>
+          <p class="text-xs text-slate-400" data-i18n="footerSocialSub">প্রতিদিনের খাবারের আপডেট ও অফার পেতে যুক্ত থাকুন আমাদের অফিসিয়াল পেজে:</p>
+          <div class="flex flex-wrap gap-2 pt-1">
+            <a id="linkFacebook" href="#" target="_blank" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-blue-600 text-white flex items-center justify-center transition shadow-sm"><i class="fa-brands fa-facebook-f text-sm"></i></a>
+            <a id="linkTwitter" href="#" target="_blank" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-black text-white flex items-center justify-center transition shadow-sm"><i class="fa-brands fa-x-twitter text-sm"></i></a>
+            <a id="linkInstagram" href="#" target="_blank" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-gradient-to-tr hover:from-amber-500 hover:to-rose-600 text-white flex items-center justify-center transition shadow-sm"><i class="fa-brands fa-instagram text-sm"></i></a>
+            <a id="linkMessenger" href="#" target="_blank" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-blue-500 text-white flex items-center justify-center transition shadow-sm"><i class="fa-brands fa-facebook-messenger text-sm"></i></a>
+            <a id="linkYouTube" href="#" target="_blank" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-rose-600 text-white flex items-center justify-center transition shadow-sm"><i class="fa-brands fa-youtube text-sm"></i></a>
+          </div>
+        </div>
+
+        <!-- Support -->
+        <div class="space-y-3">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-white border-b border-slate-800 pb-2 flex items-center gap-1.5" data-i18n="footerSupportTitle">
+            <i class="fa-solid fa-headset text-brand-500"></i> গেট ইন টাচ (সাপোর্ট)
+          </h4>
+          <p class="text-xs text-slate-400" data-i18n="footerSupportSub">যে কোনো সমস্যা বা বিশেষ অর্ডারের জন্য সরাসরি চ্যাট করুন:</p>
+          <div class="space-y-2">
+            <a id="linkWhatsApp" href="https://wa.me/" target="_blank" class="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white transition text-xs font-bold">
+              <i class="fa-brands fa-whatsapp text-base"></i>
+              <span data-i18n="btnWaSupport">হোয়াটসঅ্যাপ চ্যাট সাপোর্ট</span>
+            </a>
+            <a id="linkTelegram" href="https://t.me/" target="_blank" class="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-sky-600/20 text-sky-300 border border-sky-500/30 hover:bg-sky-600 hover:text-white transition text-xs font-bold">
+              <i class="fa-brands fa-telegram text-base"></i>
+              <span data-i18n="btnTgSupport">টেলিগ্রাম চ্যানেল ও সাপোর্ট</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Policies -->
+        <div class="space-y-3">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-white border-b border-slate-800 pb-2" data-i18n="footerPolicyTitle">
+            শর্তাবলী ও নীতিমালা (Policies)
+          </h4>
+          <div class="space-y-2 text-xs">
+            <button onclick="openPolicyModal('terms')" class="w-full text-left text-slate-400 hover:text-brand-400 flex items-center gap-2 transition">
+              <i class="fa-solid fa-file-contract text-brand-500"></i> Terms & Conditions
+            </button>
+            <button onclick="openPolicyModal('privacy')" class="w-full text-left text-slate-400 hover:text-brand-400 flex items-center gap-2 transition">
+              <i class="fa-solid fa-user-shield text-brand-500"></i> Privacy Policy
+            </button>
+            <button onclick="openPolicyModal('refund')" class="w-full text-left text-slate-400 hover:text-brand-400 flex items-center gap-2 transition">
+              <i class="fa-solid fa-rotate-left text-brand-500"></i> Refund & Cancellation Policy
+            </button>
+            <button onclick="toggleFaqModal(true)" class="w-full text-left text-slate-400 hover:text-brand-400 flex items-center gap-2 transition">
+              <i class="fa-solid fa-circle-question text-brand-500"></i> FAQ (প্রশ্নোত্তর)
+            </button>
+            <div class="pt-2 border-t border-slate-800 text-[11px] text-slate-400">
+              <i class="fa-solid fa-phone text-brand-500 mr-1"></i> <span data-i18n="labelHelpline">হেল্পলাইন</span>: <a id="footerPhoneDisplay" href="tel:" class="font-bold text-white hover:text-brand-400">017XXXXXXXX</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-5 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2 text-center sm:text-left">
+        <div>
+          © <span id="currentYear"></span> <strong class="text-slate-400 font-bold" id="copyrightBrand">BatchBite</strong>. <span data-i18n="allRightsReserved">সর্বস্বত্ব সংরক্ষিত।</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span data-i18n="tagPledge">স্বাদ ও বিশুদ্ধতার প্রতিশ্রুতি</span>
+          <span>•</span>
+          <span data-i18n="tagSpecial">গ্রামের স্পেশাল ডেলিভারি</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JAVASCRIPT ENGINE -->
+  <script>
+    const I18N = {
+      bn: {
+        appTitle: "BatchBite ফুড ডেলিভারি",
+        appTagline: "টাটকা নাস্তা ও খাবার সরাসরি আপনার এলাকায়",
+        tabLogin: "লগইন (Login)",
+        tabRegister: "রেজিস্ট্রেশন রিকোয়েস্ট",
+        labelEmail: "ইমেইল এড্রেস",
+        labelPassword: "পাসওয়ার্ড",
+        labelSetPassword: "পাসওয়ার্ড নির্ধারণ করুন",
+        btnLogin: "লগইন করুন",
+        noAccountPrompt: "অ্যাকাউন্ট নেই?",
+        linkSendReq: "রেজিস্টার রিকোয়েস্ট পাঠান",
+        labelName: "আপনার নাম",
+        labelPhone: "মোবাইল নম্বর",
+        labelVillage: "গ্রাম / এলাকা",
+        alertNotice: "সতর্কবার্তা:",
+        regNoticeText: "রেজিস্ট্রেশনের পর এডমিন প্যানেল থেকে অ্যাকাউন্ট অনুমোদন (Approve) করলেই কেবল আপনি লগইন করতে পারবেন।",
+        btnSendReg: "রেজিস্ট্রেশন রিকোয়েস্ট পাঠান",
+        myOrdersBtn: "আমার আগের অর্ডারসমূহ",
+        faqBtn: "সাধারণ প্রশ্নোত্তর (FAQ)",
+        langTitle: "ভাষা (Language)",
+        appearanceTitle: "থিম / অ্যাপিয়ারেন্স",
+        logoutBtn: "লগআউট করুন",
+        batchOpen: "Batch Orders Open",
+        heroTitle: "Today's Evening Batch",
+        heroSubtitle: "সরাসরি ফ্রেশ নাস্তা ও খাবার আপনার গ্রামে পৌঁছাবে একই ব্যাচে। সময় শেষ হওয়ার আগেই অর্ডার নিশ্চিত করুন!",
+        labelWindow: "Window",
+        labelDelivery: "Delivery",
+        timerCloses: "Window Closes In",
+        timerNextWindow: "Next Window Starts In",
+        timerSubtext: "অর্ডার করতে নিচের মেনু দেখুন",
+        catAll: "All Items",
+        catSnacks: "Evening Snacks",
+        catFastFood: "Fast Food",
+        catSweets: "Sweets",
+        catBeverages: "Beverages",
+        modalNotifTitle: "নোটিফিকেশন সেন্টার",
+        modalNotifSub: "এডমিন থেকে পাঠানো সকল বার্তা ও নোটিশ",
+        btnClose: "ঠিক আছে (Close)",
+        footerAbout: "গ্রামাঞ্চলের মানুষদের জন্য প্রতিদিনের টাটকা বিকেলের নাস্তা ও খাবার সরাসরি এক ব্যাচে নিরাপদে পৌঁছে দেওয়ার নির্ভরযোগ্য প্লাটফর্ম।",
+        qualityPledge: "১০০% মানসম্মত ও স্বাস্থ্যকর খাবার",
+        footerSocialTitle: "আমাদের সোশ্যাল মিডিয়া",
+        footerSocialSub: "প্রতিদিনের খাবারের আপডেট ও অফার পেতে যুক্ত থাকুন আমাদের অফিসিয়াল পেজে:",
+        footerSupportTitle: "গেট ইন টাচ (সাপোর্ট)",
+        footerSupportSub: "যে কোনো সমস্যা বা বিশেষ অর্ডারের জন্য সরাসরি চ্যাট করুন:",
+        btnWaSupport: "হোয়াটসঅ্যাপ চ্যাট সাপোর্ট",
+        btnTgSupport: "টেলিগ্রাম চ্যানেল ও সাপোর্ট",
+        footerPolicyTitle: "শর্তাবলী ও নীতিমালা (Policies)",
+        labelHelpline: "হেল্পলাইন",
+        allRightsReserved: "সর্বস্বত্ব সংরক্ষিত।",
+        tagPledge: "স্বাদ ও বিশুদ্ধতার প্রতিশ্রুতি",
+        tagSpecial: "গ্রামের স্পেশাল ডেলিভারি",
+        cartTitle: "আপনার কার্ট ও চেকআউট",
+        cartNoticePre: "এই অর্ডারটি সন্ধ্যার ব্যাচে আনুমানিক",
+        cartNoticePost: "এ একসাথে পৌঁছাবে।",
+        labelSubtotal: "সাবটোটাল:",
+        labelDeliveryFee: "ব্যাচ ডেলিভারি ফি:",
+        labelCodFee: "ক্যাশ অন ডেলিভারি ফি:",
+        labelTotalBill: "মোট প্রদেয় বিল:",
+        labelPayMethod: "পেমেন্ট মেথড",
+        payCod: "ক্যাশ অন ডেলিভারি",
+        payCodFeeNotice: "(+₹{fee} ফি)",
+        payUpi: "Razorpay (UPI / QR / Cards)",
+        razorpayPrompt: "কনফার্ম বাটনে ক্লিক করলেই Razorpay পপ-আপ ওপেন হবে এবং নিরাপদ অনলাইন পেমেন্ট করতে পারবেন।",
+        termsAgree1: "আমি সাইটের",
+        termsAgree2: "ব্যবহারের শর্তাবলী",
+        termsAgree3: "প্রাইভেসি পলিসি",
+        termsAgree4: "ও",
+        termsAgree5: "রিফান্ড নীতিমালা",
+        termsAgree6: "মেনে খাবার অর্ডার করছি।",
+        btnConfirmOrder: "অর্ডার কনফার্ম করুন",
+        addToCart: "কার্টে যোগ করুন",
+        outOfStock: "স্টক নেই",
+        orderClosed: "অর্ডার গ্রহণ বন্ধ",
+        emptyNotif: "কোনো নতুন নোটিফিকেশন নেই।",
+        emptyCart: "আপনার কার্ট খালি",
+        each: "প্রতিটি",
+        defaultCustomer: "কাস্টমার",
+        policyDefaultTitle: "নীতিমালা ও শর্তাবলী",
+        faqModalTitle: "সাধারণ প্রশ্নোত্তর (FAQ)",
+        faqModalSub: "ডেলিভারি, খাবার ও সার্ভিস সম্পর্কিত তথ্য",
+        refundModalTitle: "রিফান্ড রিকোয়েস্ট (Refund Request)",
+        labelRefundReason: "রিফান্ডের কারণ নির্বাচন করুন *",
+        optReasonDamaged: "Damaged Product (ক্ষতিগ্রস্ত খাবার)",
+        optReasonMissing: "Missing Item (খাবারের আইটেম পাওয়া যায়নি)",
+        optReasonWrong: "Wrong Food Received (ভুল খাবার এসেছে)",
+        labelRefundNote: "অতিরিক্ত বিবরণ (ঐচ্ছিক)",
+        refundNoticeText: "আপনার রিকোয়েস্টটি এডমিন প্যানেলে যাচাই করা হবে। এডমিন অনুমোদন বা বাতিল করার সাথে সাথে আপনি নোটিফিকেশন পাবেন।",
+        btnCancel: "বাতিল",
+        noOrdersFound: "কোনো অর্ডার পাওয়া যায়নি",
+        noOrdersSub: "মেনু থেকে অর্ডার করলে এখানে স্ট্যাটাস দেখতে পাবেন।",
+        noFoodFound: "কোনো খাবার পাওয়া যায়নি।",
+        phName: "পুরো নাম লিখুন",
+        phPhone: "017... / 98...",
+        phVillage: "গ্রামের নাম",
+        phPass: "কমপক্ষে ৪ অক্ষরের পাসওয়ার্ড",
+        phCustName: "পূর্ণ নাম",
+        phCustPhone: "মোবাইল নম্বর",
+        phCustVillage: "গ্রাম / এলাকা",
+        phCustLandmark: "বাড়ি / ল্যান্ডমার্ক",
+        phRefundNote: "সমস্যাটি সংক্ষেপে বিস্তারিত লিখুন...",
+        statusPending: "পেন্ডিং (Pending)",
+        statusInPrep: "রান্না হচ্ছে (In-Prep)",
+        statusOnTheWay: "ডেলিভারিতে বের হয়েছে (On the Way)",
+        statusDelivered: "ডেলিভারি সম্পন্ন (Delivered)",
+        statusRejected: "❌ বাতিল করা হয়েছে (Rejected)",
+        statusCancelled: "অর্ডার বাতিল (Cancelled)",
+        lblPayment: "পেমেন্ট:",
+        lblFood: "খাবার:",
+        lblRefundReason: "রিফান্ডের কারণ:",
+        btnCancelOrder: "Cancel Order",
+        btnReqRefund: "Request Refund",
+        refundPending: "রিফান্ড পেন্ডিং",
+        refundApproved: "রিফান্ড অনুমোদিত (Approved)",
+        refundRejected: "রিফান্ড বাতিল (Rejected)"
+      },
+      en: {
+        appTitle: "BatchBite Food Delivery",
+        appTagline: "Fresh snacks & delicious food delivered to your village",
+        tabLogin: "Login",
+        tabRegister: "Register Request",
+        labelEmail: "Email Address",
+        labelPassword: "Password",
+        labelSetPassword: "Set Password",
+        btnLogin: "Log In",
+        noAccountPrompt: "Don't have an account?",
+        linkSendReq: "Send Register Request",
+        labelName: "Your Full Name",
+        labelPhone: "Phone Number",
+        labelVillage: "Village / Area",
+        alertNotice: "Notice:",
+        regNoticeText: "After registration, your account must be approved by the admin before you can log in.",
+        btnSendReg: "Submit Registration",
+        myOrdersBtn: "My Orders History",
+        faqBtn: "FAQ & Help",
+        langTitle: "Language",
+        appearanceTitle: "Theme / Appearance",
+        logoutBtn: "Log Out",
+        batchOpen: "Batch Orders Open",
+        heroTitle: "Today's Evening Batch",
+        heroSubtitle: "Fresh evening snacks dispatched together to your village. Confirm before time runs out!",
+        labelWindow: "Window",
+        labelDelivery: "Delivery",
+        timerCloses: "Window Closes In",
+        timerNextWindow: "Next Window Starts In",
+        timerSubtext: "Explore menu below to order",
+        catAll: "All Items",
+        catSnacks: "Evening Snacks",
+        catFastFood: "Fast Food",
+        catSweets: "Sweets",
+        catBeverages: "Beverages",
+        modalNotifTitle: "Notification Center",
+        modalNotifSub: "Broadcast alerts & notices from admin",
+        btnClose: "Close",
+        footerAbout: "A reliable single-batch delivery service bringing hygienic and hot snacks right to your rural doorstep.",
+        qualityPledge: "100% Quality & Hygienic Food",
+        footerSocialTitle: "Our Social Media",
+        footerSocialSub: "Stay connected on our official channels for daily batches & discounts:",
+        footerSupportTitle: "Get In Touch (Support)",
+        footerSupportSub: "Chat directly with our support team:",
+        btnWaSupport: "WhatsApp Chat Support",
+        btnTgSupport: "Telegram Channel & Chat",
+        footerPolicyTitle: "Legal & Policies",
+        labelHelpline: "Helpline",
+        allRightsReserved: "All Rights Reserved.",
+        tagPledge: "Pledge of Taste & Purity",
+        tagSpecial: "Special Village Delivery",
+        cartTitle: "Your Cart & Checkout",
+        cartNoticePre: "This order will arrive in the evening batch around",
+        cartNoticePost: "together.",
+        labelSubtotal: "Subtotal:",
+        labelDeliveryFee: "Batch Delivery Fee:",
+        labelCodFee: "Cash on Delivery Fee:",
+        labelTotalBill: "Total Payable:",
+        labelPayMethod: "Payment Method",
+        payCod: "Cash on Delivery",
+        payCodFeeNotice: "(+₹{fee} fee)",
+        payUpi: "Razorpay (UPI / QR / Cards)",
+        razorpayPrompt: "Clicking Confirm opens the Razorpay popup to safely complete your UPI/Card payment.",
+        termsAgree1: "I agree to the",
+        termsAgree2: "Terms & Conditions",
+        termsAgree3: "Privacy Policy",
+        termsAgree4: "and",
+        termsAgree5: "Refund Policy",
+        termsAgree6: "to place my order.",
+        btnConfirmOrder: "Confirm Order",
+        addToCart: "Add to Cart",
+        outOfStock: "Out of Stock",
+        orderClosed: "Ordering Closed",
+        emptyNotif: "No notifications found.",
+        emptyCart: "Your cart is empty",
+        each: "each",
+        defaultCustomer: "Customer",
+        policyDefaultTitle: "Policies & Terms",
+        faqModalTitle: "Frequently Asked Questions (FAQ)",
+        faqModalSub: "Information regarding orders, delivery and refunds",
+        refundModalTitle: "Request Refund",
+        labelRefundReason: "Select Refund Reason *",
+        optReasonDamaged: "Damaged Product",
+        optReasonMissing: "Missing Item",
+        optReasonWrong: "Wrong Food Received",
+        labelRefundNote: "Additional Details (Optional)",
+        refundNoticeText: "Your request will be verified by the admin team. You will receive an instant notification upon approval or rejection.",
+        btnCancel: "Cancel",
+        noOrdersFound: "No orders found",
+        noOrdersSub: "Orders you place will appear here along with status updates.",
+        noFoodFound: "No menu items found.",
+        phName: "Enter your full name",
+        phPhone: "017... / 98...",
+        phVillage: "Village name",
+        phPass: "At least 4 characters password",
+        phCustName: "Full Name",
+        phCustPhone: "Mobile Number",
+        phCustVillage: "Village / Area",
+        phCustLandmark: "House / Landmark",
+        phRefundNote: "Explain the issue briefly...",
+        statusPending: "Pending",
+        statusInPrep: "In-Prep",
+        statusOnTheWay: "On the Way",
+        statusDelivered: "Delivered",
+        statusRejected: "❌ Rejected",
+        statusCancelled: "Cancelled",
+        lblPayment: "Payment:",
+        lblFood: "Items:",
+        lblRefundReason: "Refund Reason:",
+        btnCancelOrder: "Cancel Order",
+        btnReqRefund: "Request Refund",
+        refundPending: "Refund Pending",
+        refundApproved: "Refund Approved",
+        refundRejected: "Refund Rejected"
+      },
+      hi: {
+        appTitle: "बैचबाइट फ़ूड डिलीवरी",
+        appTagline: "ताज़ा नाश्ता और भोजन सीधे आपके गाँव तक",
+        tabLogin: "लॉग इन (Login)",
+        tabRegister: "पंजीकरण अनुरोध",
+        labelEmail: "ईमेल पता",
+        labelPassword: "पासवर्ड",
+        labelSetPassword: "पासवर्ड निर्धारित करें",
+        btnLogin: "लॉग इन करें",
+        noAccountPrompt: "खाता नहीं है?",
+        linkSendReq: "रजिस्ट्रेशन रिक्वेस्ट भेजें",
+        labelName: "आपका पूरा नाम",
+        labelPhone: "मोबाइल नंबर",
+        labelVillage: "गाँव / क्षेत्र",
+        alertNotice: "चेतावनी:",
+        regNoticeText: "पंजीकरण के बाद एडमिन द्वारा अनुमति मिलने पर ही आप लॉग इन कर सकेंगे।",
+        btnSendReg: "पंजीकरण अनुरोध भेजें",
+        myOrdersBtn: "मेरे पिछले ऑर्डर्स",
+        faqBtn: "सामान्य प्रश्न (FAQ)",
+        langTitle: "भाषा (Language)",
+        appearanceTitle: "थीम / रूप-রং",
+        logoutBtn: "लॉग आउट करें",
+        batchOpen: "बैच ऑर्डर खुले हैं",
+        heroTitle: "आज का शाम का बैच",
+        heroSubtitle: "ताज़ा नाश्ता और भोजन सीधे एक ही बैच में आपके गाँव पहुंचेगा। समय समाप्त होने से पहले ऑर्डर करें!",
+        labelWindow: "विंडो",
+        labelDelivery: "डिलीवरी",
+        timerCloses: "समय शेष",
+        timerNextWindow: "अगला बैच शुरू होगा",
+        timerSubtext: "ऑर्डर करने के लिए नीचे मेनू देखें",
+        catAll: "सभी व्यंजन",
+        catSnacks: "शाम का नाश्ता",
+        catFastFood: "फ़ास्ट फ़ूड",
+        catSweets: "मिठाइयाँ",
+        catBeverages: "चाय व पेय",
+        modalNotifTitle: "सूचना केंद्र (Notifications)",
+        modalNotifSub: "एडमिन द्वारा भेजे गए सभी संदेश व सूचनाएं",
+        btnClose: "बंद करें",
+        footerAbout: "गाँवों के लोगों के लिए ताज़ा और स्वच्छ भोजन एक ही बैच में सुरक्षित पहुँचाने का विश्वसनीय मंच।",
+        qualityPledge: "100% शुद्ध और स्वादिष्ट भोजन",
+        footerSocialTitle: "हमारा सोशल मीडिया",
+        footerSocialSub: "दैनिक अपडेट और ऑफ़र के लिए हमारे पेज से जुड़ें:",
+        footerSupportTitle: "सहायता केंद्र",
+        footerSupportSub: "किसी भी समस्या या विशेष ऑर्डर के लिए चैट करें:",
+        btnWaSupport: "व्हाट्सएप सहायता",
+        btnTgSupport: "टेलीग्राम सहायता",
+        footerPolicyTitle: "नियम व शर्तें (Policies)",
+        labelHelpline: "हेल्पलाइन",
+        allRightsReserved: "सर्वाधिकार सुरक्षित।",
+        tagPledge: "स्वाद और शुद्धता का वादा",
+        tagSpecial: "ग्रामीण स्पेशल डिलीवरी",
+        cartTitle: "आपकी कार्ट और चेकआउट",
+        cartNoticePre: "यह ऑर्डर शाम के बैच में लगभग",
+        cartNoticePost: "तक पहुंचेगा।",
+        labelSubtotal: "उप-योग:",
+        labelDeliveryFee: "डिलीवरी शुल्क:",
+        labelCodFee: "कैश ऑन डिलीवरी शुल्क:",
+        labelTotalBill: "कुल देय राशि:",
+        labelPayMethod: "भुगतान का प्रकार",
+        payCod: "कैश ऑन डिलीवरी",
+        payCodFeeNotice: "(+₹{fee} अतिरिक्त)",
+        payUpi: "Razorpay (UPI / QR / Cards)",
+        razorpayPrompt: "कन्फ़र्म करने पर सुरक्षित ऑनलाइन भुगतान (UPI/QR) के लिए Razorpay खुलेगा।",
+        termsAgree1: "मैं वेबसाइट के",
+        termsAgree2: "नियम व शर्तें",
+        termsAgree3: "गोपनीयता नीति",
+        termsAgree4: "और",
+        termsAgree5: "रिफंड नीति",
+        termsAgree6: "से सहमत हूँ।",
+        btnConfirmOrder: "ऑर्डर कन्फ़र्म करें",
+        addToCart: "कार्ट में जोड़ें",
+        outOfStock: "स्टॉक खत्म",
+        orderClosed: "ऑर्डर बंद",
+        emptyNotif: "कोई नई सूचना नहीं है।",
+        emptyCart: "आपकी कार्ट खाली है",
+        each: "प्रत्येक",
+        defaultCustomer: "ग्राहक",
+        policyDefaultTitle: "नीतियां और शर्तें",
+        faqModalTitle: "सामान्य प्रश्न (FAQ)",
+        faqModalSub: "डिलीवरी और भोजन से जुड़ी सामान्य जानकारी",
+        refundModalTitle: "रिफंड अनुरोध",
+        labelRefundReason: "रिफंड का कारण चुनें *",
+        optReasonDamaged: "Damaged Product (क्षतिग्रस्त भोजन)",
+        optReasonMissing: "Missing Item (वस्तु गायब है)",
+        optReasonWrong: "Wrong Food Received (गलत भोजन मिला)",
+        labelRefundNote: "अतिरिक्त विवरण (वैकल्पिक)",
+        refundNoticeText: "आपके अनुरोध की जांच एडमिन द्वारा की जाएगी। निर्णय होते ही आपको सूचित किया जाएगा।",
+        btnCancel: "रद्द करें",
+        noOrdersFound: "कोई पुराना ऑर्डर नहीं मिला",
+        noOrdersSub: "आपके द्वारा किए गए ऑर्डर्स यहाँ दिखाई देंगे।",
+        noFoodFound: "कोई भोजन उपलब्ध नहीं है।",
+        phName: "पूरा नाम लिखें",
+        phPhone: "017... / 98...",
+        phVillage: "गाँव का नाम",
+        phPass: "कम से कम 4 अक्षरों का पासवर्ड",
+        phCustName: "पूरा नाम",
+        phCustPhone: "मोबाइल नंबर",
+        phCustVillage: "गाँव / क्षेत्र",
+        phCustLandmark: "घर / पहचान स्थल",
+        phRefundNote: "समस्या का संक्षेप में विवरण दें...",
+        statusPending: "लंबित (Pending)",
+        statusInPrep: "तैयार हो रहा है",
+        statusOnTheWay: "रास्ते में है",
+        statusDelivered: "सफलतापूर्वक वितरित",
+        statusRejected: "❌ अस्वीकृत",
+        statusCancelled: "रद्द किया गया",
+        lblPayment: "भुगतान:",
+        lblFood: "व्यंजन:",
+        lblRefundReason: "रिफंड का कारण:",
+        btnCancelOrder: "ऑर्डर रद्द करें",
+        btnReqRefund: "रिफंड मांगें",
+        refundPending: "रिफंड प्रक्रिया में",
+        refundApproved: "रिफंड स्वीकृत",
+        refundRejected: "रिफंड अस्वीकृत"
+      }
+    };
+
+    let currentLang = localStorage.getItem('batchbite_lang') || 'bn';
+    let currentTheme = localStorage.getItem('batchbite_theme') || 'light';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDNkijX-ySo0jxAZhBYlLfd00oroNvue7k",
+      authDomain: "mitmat-express.firebaseapp.com",
+      databaseURL: "https://mitmat-express-default-rtdb.firebaseio.com",
+      projectId: "mitmat-express",
+      storageBucket: "mitmat-express.firebasestorage.app",
+      messagingSenderId: "534964500871",
+      appId: "1:534964500871:web:74f96bdfb34515e5653b22"
+    };
+
+    let isFirebaseReady = false;
+    let db = null;
+
+    if (firebaseConfig.databaseURL && firebaseConfig.databaseURL.length > 5) {
+      try {
+        firebase.initializeApp(firebaseConfig);
+        firebase.auth().signInAnonymously().catch(err => {
+      console.error("User Auth Error:", err);
+    });
+        db = firebase.database();
+        isFirebaseReady = true;
+      } catch (e) {
+        console.warn("Firebase Init Fallback", e);
+      }
+    }
+
+    const DEFAULT_DATA = {
+      settings: {
+        brandName: "GraminSnacks Batch Express",
+        tagline: "Fresh Evening Snacks • Single Village Delivery Batch",
+        deliveryFee: 10,
+        startTime: "16:00",
+        endTime: "18:00",
+        batchDeliveryTime: "6:45 PM - 7:30 PM",
+        manualOverride: "auto",
+        heroBadge: "Batch Orders Open",
+        heroTitle: "Today's Evening Batch",
+        heroSubtitle: "সরাসরি ফ্রেশ নাস্তা ও খাবার আপনার গ্রামে পৌঁছাবে একই ব্যাচে। সময় শেষ হওয়ার আগেই অর্ডার নিশ্চিত করুন!",
+        heroTimerSubtext: "অর্ডার করতে নিচের মেনু দেখুন",
+        payment: {
+          activeMethod: "both",
+          codExtraFee: 5,
+          razorpayKeyId: "rzp_test_YourKeyHere",
+          merchantName: "BatchBite Delivery"
+        },
+        footer: {
+          facebook: "https://facebook.com",
+          twitter: "https://twitter.com",
+          instagram: "https://instagram.com",
+          messenger: "https://m.me",
+          whatsapp: "https://wa.me/919876543210",
+          telegram: "https://t.me/example",
+          youtube: "https://youtube.com",
+          supportPhone: "01700000000",
+          aboutText: "গ্রামাঞ্চলের মানুষদের জন্য প্রতিদিনের টাটকা বিকেলের নাস্তা ও খাবার সরাসরি এক ব্যাচে নিরাপদে পৌঁছে দেওয়ার নির্ভরযোগ্য প্লাটফর্ম।"
+        },
+        policies: {
+          terms: `1. Terms of Service:\nOur service operates exclusively for batch deliveries in designated rural and suburban clusters. Orders are dispatched once per day.`,
+          privacy: `1. Privacy Notice:\nWe respect your privacy and only collect necessary details (name, contact number, village/delivery address) solely to fulfill orders.`,
+          refund: `1. Refund & Cancellation:\nOrders can be cancelled before preparation begins. Refund requests for damaged/incorrect food must be made immediately upon delivery.`
+        }
+      },
+      faqs: [
+        { id: 'f1', question: 'কীভাবে ব্যাচ ডেলিভারিতে খাবার অর্ডার করব? / How to place an order?', answer: 'প্রতিদিন নির্ধারিত সময়ে (যেমন: বিকাল ৪টা থেকে ৬টা) মেনু থেকে খাবার পছন্দ করে কার্টে যোগ করে অর্ডার নিশ্চিত করুন।' },
+        { id: 'f2', question: 'আমি কি অর্ডার ক্যানসেল করতে পারব? / Can I cancel my order?', answer: 'হ্যাঁ, এডমিন যতক্ষণ না অর্ডারটি "Out for Delivery" বা ডেলিভারিতে পাঠাচ্ছেন, ততক্ষণ "আমার আগের অর্ডারসমূহ" থেকে ক্যানসেল করা যাবে।' },
+        { id: 'f3', question: 'খাবারে কোনো সমস্যা হলে রিফান্ড পাব? / Can I claim a refund?', answer: 'খাবার ডেলিভারি সম্পন্ন হওয়ার পর কোনো আইটেম মিসিং, ড্যামেজ বা ভুল এলে "Request Refund" বাটনের মাধ্যমে রিফান্ড ক্লেইম করতে পারবেন।' }
+      ],
+      menu: [
+        { id: "m1", title: "Special Samosa (2 Pcs)", category: "Evening Snacks", price: 30, rating: 5, desc: "Fresh crispy samosas served with sweet tamarind & spicy chutney.", img: "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=500&q=80", available: true },
+        { id: "m2", title: "Paneer Bread Pakoda", category: "Evening Snacks", price: 25, rating: 5, desc: "Stuffed with fresh cottage cheese, battered in spiced gram flour.", img: "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=500&q=80", available: true }
+      ],
+      notifications: [
+        { id: 'n1', title: 'স্বাগতম BatchBite-এ!', message: 'আজকের সন্ধ্যার ব্যাচে স্পেশাল ডিসকাউন্ট সহ নাস্তা অর্ডার করুন।', time: 'Today', type: 'info' }
+      ],
+      users: [],
+      orders: []
+    };
+
+    let appState = {
+      settings: { ...DEFAULT_DATA.settings },
+      faqs: [ ...DEFAULT_DATA.faqs ],
+      menu: [ ...DEFAULT_DATA.menu ],
+      notifications: [ ...DEFAULT_DATA.notifications ],
+      users: [],
+      orders: []
+    };
+
+    let currentUser = null;
+    let cart = [];
+    let currentCategoryFilter = 'all';
+    let isStoreCurrentlyOpen = false;
+
+    function initApp() {
+      applyTheme(currentTheme);
+      applyLanguage(currentLang);
+      document.getElementById('currentYear').innerText = new Date().getFullYear();
+      checkAuthSession();
+
+      if (isFirebaseReady) {
+        db.ref('settings').on('value', snap => {
+          if (snap.exists()) {
+            appState.settings = snap.val();
+            if (!appState.settings.payment) appState.settings.payment = { ...DEFAULT_DATA.settings.payment };
+            updateUIFromSettings();
+            renderFooterLinks();
+            updatePaymentMethodsAvailability();
+            checkTimeWindowEngine();
+          }
+        });
+
+        db.ref('faqs').on('value', snap => {
+          if (snap.exists()) {
+            const data = snap.val();
+            appState.faqs = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+          } else {
+            appState.faqs = [ ...DEFAULT_DATA.faqs ];
+          }
+        });
+
+        db.ref('menu').on('value', snap => {
+          if (snap.exists()) {
+            const data = snap.val();
+            appState.menu = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+          }
+          renderMenu();
+        });
+
+        db.ref('users').on('value', snap => {
+          if (snap.exists()) {
+            const data = snap.val();
+            appState.users = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+            validateCurrentSession();
+          }
+        });
+
+        db.ref('orders').on('value', snap => {
+          if (snap.exists()) {
+            const data = snap.val();
+            appState.orders = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+          } else {
+            appState.orders = [];
+          }
+          renderUserOrders();
+        });
+
+        db.ref('notifications').on('value', snap => {
+          if (snap.exists()) {
+            const data = snap.val();
+            appState.notifications = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+          } else {
+            appState.notifications = [];
+          }
+          renderNotificationsBadge();
+        });
+      } else {
+        const localData = localStorage.getItem('batchbite_data');
+        if (localData) {
+          appState = JSON.parse(localData);
+          if (!appState.settings.policies) appState.settings.policies = { ...DEFAULT_DATA.settings.policies };
+          if (!appState.settings.payment) appState.settings.payment = { ...DEFAULT_DATA.settings.payment };
+          if (!appState.notifications) appState.notifications = [ ...DEFAULT_DATA.notifications ];
+          if (!appState.faqs) appState.faqs = [ ...DEFAULT_DATA.faqs ];
+        } else {
+          appState = JSON.parse(JSON.stringify(DEFAULT_DATA));
+          localStorage.setItem('batchbite_data', JSON.stringify(appState));
+        }
+        updateUIFromSettings();
+        renderFooterLinks();
+        renderMenu();
+        updatePaymentMethodsAvailability();
+        renderNotificationsBadge();
+
+        window.addEventListener('storage', e => {
+          if (e.key === 'batchbite_data') {
+            appState = JSON.parse(e.newValue || '{}');
+            updateUIFromSettings();
+            renderFooterLinks();
+            renderMenu();
+            renderUserOrders();
+            renderNotificationsBadge();
+            updatePaymentMethodsAvailability();
+            validateCurrentSession();
+          }
+        });
+      }
+
+      setInterval(checkTimeWindowEngine, 1000);
+      checkTimeWindowEngine();
+    }
+
+    function toggleFaqModal(open) {
+      const modal = document.getElementById('faqModal');
+      const container = document.getElementById('faqListContainer');
+      if (open) {
+        container.innerHTML = '';
+        const list = appState.faqs || [];
+        if (list.length === 0) {
+          container.innerHTML = `<div class="p-8 text-center text-slate-400">No FAQs found.</div>`;
+        } else {
+          list.forEach((item, index) => {
+            const details = document.createElement('details');
+            details.className = "group border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3.5 transition [&_summary::-webkit-details-marker]:hidden";
+            details.innerHTML = `
+              <summary class="flex items-center justify-between cursor-pointer font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200">
+                <span class="flex items-center gap-2">
+                  <span class="w-5 h-5 rounded-full bg-brand-100 dark:bg-brand-950 text-brand-600 dark:text-brand-400 text-[10px] flex items-center justify-center font-mono font-bold">${index + 1}</span>
+                  ${item.question}
+                </span>
+                <span class="transition group-open:rotate-180">
+                  <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
+                </span>
+              </summary>
+              <div class="mt-2.5 pt-2.5 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                ${item.answer}
+              </div>
+            `;
+            container.appendChild(details);
+          });
+        }
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function handleCustomerCancelOrder(orderId) {
+      if (!confirm(`Cancel order #${orderId}?`)) return;
+
+      const patch = {
+        status: 'Cancelled',
+        cancelledBy: 'Customer',
+        cancelledAt: new Date().toISOString()
+      };
+
+      if (isFirebaseReady) {
+        db.ref('orders/' + orderId).update(patch);
+      } else {
+        const ord = appState.orders.find(o => o.id === orderId);
+        if (ord) {
+          Object.assign(ord, patch);
+          localStorage.setItem('batchbite_data', JSON.stringify(appState));
+        }
+      }
+
+      renderUserOrders();
+      alert(`Order #${orderId} has been cancelled.`);
+    }
+
+    function openRefundModal(orderId) {
+      document.getElementById('refundOrderIdInput').value = orderId;
+      document.getElementById('refundOrderSubtitle').innerText = `Order #${orderId}`;
+      document.getElementById('refundForm').reset();
+      document.getElementById('refundModal').classList.remove('hidden');
+    }
+
+    function closeRefundModal() {
+      document.getElementById('refundModal').classList.add('hidden');
+    }
+
+    function submitRefundRequest(e) {
+      e.preventDefault();
+      const orderId = document.getElementById('refundOrderIdInput').value;
+      const reason = document.getElementById('refundReasonSelect').value;
+      const note = document.getElementById('refundNoteInput').value.trim();
+
+      const patch = {
+        refundStatus: 'Pending',
+        refundReason: reason,
+        refundNote: note,
+        refundRequestedAt: new Date().toLocaleString()
+      };
+
+      if (isFirebaseReady) {
+        db.ref('orders/' + orderId).update(patch);
+      } else {
+        const ord = appState.orders.find(o => o.id === orderId);
+        if (ord) {
+          Object.assign(ord, patch);
+          localStorage.setItem('batchbite_data', JSON.stringify(appState));
+        }
+      }
+
+      closeRefundModal();
+      renderUserOrders();
+      alert(`Refund request submitted for #${orderId}.`);
+    }
+
+    function renderUserOrders() {
+      const container = document.getElementById('userOrdersList');
+      if (!container || !currentUser) return;
+      const dict = I18N[currentLang] || I18N.bn;
+
+      const myOrders = (appState.orders || []).filter(o => 
+        (o.customer && (o.customer.email === currentUser.email || o.customer.phone === currentUser.phone))
+      );
+
+      container.innerHTML = '';
+      if (myOrders.length === 0) {
+        container.innerHTML = `
+          <div class="h-64 flex flex-col items-center justify-center text-center p-6 text-slate-400">
+            <i class="fa-solid fa-receipt text-4xl mb-2 text-slate-300 dark:text-slate-700"></i>
+            <p class="text-sm font-semibold">${dict.noOrdersFound}</p>
+            <p class="text-xs mt-1">${dict.noOrdersSub}</p>
+          </div>
+        `;
+        return;
+      }
+
+      myOrders.forEach(order => {
+        let statusBadge = 'bg-amber-100 text-amber-700 border border-amber-200';
+        let statusLabel = dict.statusPending;
+        let statusIcon = 'fa-hourglass-start';
+
+        if (order.status === 'In-Prep') {
+          statusBadge = 'bg-blue-100 text-blue-700 border border-blue-200';
+          statusLabel = dict.statusInPrep;
+          statusIcon = 'fa-fire-burner';
+        } else if (order.status === 'Out for Delivery') {
+          statusBadge = 'bg-purple-100 text-purple-700 border border-purple-200';
+          statusLabel = dict.statusOnTheWay;
+          statusIcon = 'fa-motorcycle';
+        } else if (order.status === 'Delivered') {
+          statusBadge = 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+          statusLabel = dict.statusDelivered;
+          statusIcon = 'fa-circle-check';
+        } else if (order.status === 'Rejected') {
+          statusBadge = 'bg-rose-100 text-rose-700 border border-rose-300 font-black';
+          statusLabel = dict.statusRejected;
+          statusIcon = 'fa-circle-xmark';
+        } else if (order.status === 'Cancelled') {
+          statusBadge = 'bg-slate-200 text-slate-700 border border-slate-300';
+          statusLabel = dict.statusCancelled;
+          statusIcon = 'fa-ban';
+        }
+
+        const canCancel = (order.status === 'Pending' || order.status === 'In-Prep');
+        const isDelivered = (order.status === 'Delivered');
+
+        let refundBadgeHtml = '';
+        if (order.refundStatus === 'Pending') {
+          refundBadgeHtml = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300"><i class="fa-solid fa-clock"></i> ${dict.refundPending}</span>`;
+        } else if (order.refundStatus === 'Approved') {
+          refundBadgeHtml = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300"><i class="fa-solid fa-check-circle"></i> ${dict.refundApproved}</span>`;
+        } else if (order.refundStatus === 'Rejected') {
+          refundBadgeHtml = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300"><i class="fa-solid fa-xmark"></i> ${dict.refundRejected}</span>`;
+        }
+
+        const itemsSummary = (order.items || []).map(i => `${i.qty}x ${i.title}`).join(', ');
+
+        const card = document.createElement('div');
+        card.className = "p-3 sm:p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-2.5 shadow-sm";
+        card.innerHTML = `
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-mono font-bold text-slate-700 dark:text-slate-300">${order.id}</span>
+            <span class="text-[10px] text-slate-400">${order.timeStr || ''}</span>
+          </div>
+
+          <div class="flex items-center justify-between flex-wrap gap-1">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${statusBadge}">
+              <i class="fa-solid ${statusIcon}"></i> ${statusLabel}
+            </span>
+            <span class="font-black text-slate-900 dark:text-white text-sm">₹${order.totalAmount}</span>
+          </div>
+
+          <div class="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
+            <div><strong>${dict.lblPayment}</strong> ${order.paymentMethod || 'Cash'} ${order.paymentId ? `(Txn: ${order.paymentId})` : ''}</div>
+            <div><strong>${dict.lblFood}</strong> ${itemsSummary}</div>
+            ${order.refundReason ? `<div class="text-[11px] text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-800"><strong>${dict.lblRefundReason}</strong> ${order.refundReason} ${refundBadgeHtml}</div>` : ''}
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-1">
+            ${canCancel ? `
+              <button onclick="handleCustomerCancelOrder('${order.id}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                <i class="fa-solid fa-ban text-[11px]"></i> ${dict.btnCancelOrder}
+              </button>
+            ` : ''}
+
+            ${isDelivered && !order.refundStatus ? `
+              <button onclick="openRefundModal('${order.id}')" class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-600 dark:bg-brand-950/40 dark:hover:bg-brand-900/60 dark:text-brand-400 border border-brand-200 dark:border-brand-800 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm">
+                <i class="fa-solid fa-rotate-left text-[11px]"></i> ${dict.btnReqRefund}
+              </button>
+            ` : ''}
+
+            ${order.refundStatus ? refundBadgeHtml : ''}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function updatePaymentMethodsAvailability() {
+      const pay = appState.settings.payment || DEFAULT_DATA.settings.payment;
+      const activeMethod = pay.activeMethod || 'both';
+      const dict = I18N[currentLang] || I18N.bn;
+
+      const codLabel = document.getElementById('paymentCodLabel');
+      const upiLabel = document.getElementById('paymentUpiLabel');
+      const radioCod = document.getElementById('payRadioCod');
+      const radioUpi = document.getElementById('payRadioUpi');
+
+      const codExtraFee = Number(pay.codExtraFee) || 0;
+      const codNotice = codExtraFee > 0 ? `<span class="text-[10px] font-bold text-amber-600 block">${dict.payCodFeeNotice.replace('{fee}', codExtraFee)}</span>` : '';
+      document.getElementById('payCodText').innerHTML = `${dict.payCod} ${codNotice}`;
+
+      if (activeMethod === 'both') {
+        codLabel.classList.remove('hidden', 'opacity-40', 'pointer-events-none');
+        upiLabel.classList.remove('hidden', 'opacity-40', 'pointer-events-none');
+        radioCod.disabled = false;
+        radioUpi.disabled = false;
+        if (!radioCod.checked && !radioUpi.checked) radioCod.checked = true;
+      } else if (activeMethod === 'cod') {
+        codLabel.classList.remove('hidden', 'opacity-40', 'pointer-events-none');
+        upiLabel.classList.add('hidden');
+        radioCod.disabled = false;
+        radioUpi.disabled = true;
+        radioCod.checked = true;
+      } else if (activeMethod === 'online' || activeMethod === 'upi' || activeMethod === 'razorpay') {
+        upiLabel.classList.remove('hidden', 'opacity-40', 'pointer-events-none');
+        codLabel.classList.add('hidden');
+        radioCod.disabled = true;
+        radioUpi.disabled = false;
+        radioUpi.checked = true;
+      }
+
+      onPaymentMethodChanged();
+    }
+
+    function onPaymentMethodChanged() {
+      const selected = document.querySelector('input[name="custPayment"]:checked');
+      if (!selected) return;
+
+      const val = selected.value;
+      const noticeBox = document.getElementById('razorpayNoticeBox');
+
+      if (val === 'Razorpay Online') {
+        noticeBox.classList.remove('hidden');
+      } else {
+        noticeBox.classList.add('hidden');
+      }
+
+      renderCartItems();
+    }
+
+    function setTheme(mode) {
+      currentTheme = mode;
+      localStorage.setItem('batchbite_theme', mode);
+      applyTheme(mode);
+    }
+
+    function applyTheme(mode) {
+      const html = document.documentElement;
+      const btnLight = document.getElementById('themeBtnLight');
+      const btnDark = document.getElementById('themeBtnDark');
+
+      if (mode === 'dark') {
+        html.classList.add('dark');
+        html.classList.remove('light');
+        btnDark.className = "p-1 px-2 rounded-md text-[10px] sm:text-[11px] font-bold bg-brand-600 text-white flex items-center gap-1 shadow-sm";
+        btnLight.className = "p-1 px-2 rounded-md text-[10px] sm:text-[11px] font-bold text-slate-500 hover:text-slate-700 flex items-center gap-1";
+      } else {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        btnLight.className = "p-1 px-2 rounded-md text-[10px] sm:text-[11px] font-bold bg-white text-slate-900 flex items-center gap-1 shadow-sm";
+        btnDark.className = "p-1 px-2 rounded-md text-[10px] sm:text-[11px] font-bold text-slate-500 hover:text-slate-700 flex items-center gap-1";
+      }
+    }
+
+    function changeLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem('batchbite_lang', lang);
+      applyLanguage(lang);
+      renderMenu();
+      renderCartItems();
+      renderUserOrders();
+      renderNotificationsBadge();
+      updatePaymentMethodsAvailability();
+      checkTimeWindowEngine();
+    }
+
+    function applyLanguage(lang) {
+      const dict = I18N[lang] || I18N.bn;
+      
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key]) el.innerText = dict[key];
+      });
+
+      document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+        const key = el.getAttribute('data-i18n-ph');
+        if (dict[key]) el.setAttribute('placeholder', dict[key]);
+      });
+
+      document.getElementById('currentLangTag').innerText = lang.toUpperCase();
+
+      ['bn', 'en', 'hi'].forEach(l => {
+        const btn = document.getElementById(`lang-btn-${l}`);
+        if (btn) {
+          if (l === lang) {
+            btn.className = "lang-opt-btn py-1 px-1 text-center rounded-lg text-[10px] sm:text-[11px] font-bold border border-brand-500 bg-brand-500 text-white shadow-sm";
+          } else {
+            btn.className = "lang-opt-btn py-1 px-1 text-center rounded-lg text-[10px] sm:text-[11px] font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300";
+          }
+        }
+      });
+
+      updateHeroCardUI();
+    }
+
+    function renderNotificationsBadge() {
+      const notifs = appState.notifications || [];
+      const badge = document.getElementById('notifBadge');
+      if (notifs.length > 0) {
+        badge.innerText = notifs.length;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    function toggleNotificationModal(open) {
+      const modal = document.getElementById('notificationModal');
+      const list = document.getElementById('notificationsList');
+      const dict = I18N[currentLang] || I18N.bn;
+
+      if (open) {
+        list.innerHTML = '';
+        const notifs = appState.notifications || [];
+
+        if (notifs.length === 0) {
+          list.innerHTML = `
+            <div class="h-44 flex flex-col items-center justify-center text-center text-slate-400">
+              <i class="fa-regular fa-bell text-3xl mb-2 text-slate-300 dark:text-slate-700"></i>
+              <p class="font-semibold text-xs">${dict.emptyNotif}</p>
+            </div>
+          `;
+        } else {
+          notifs.slice().reverse().forEach(n => {
+            let icon = 'fa-bullhorn text-brand-500';
+            let bgClass = 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800';
+
+            if (n.type === 'offer') {
+              icon = 'fa-tag text-emerald-500';
+              bgClass = 'bg-emerald-50/50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40';
+            } else if (n.type === 'alert') {
+              icon = 'fa-triangle-exclamation text-rose-500';
+              bgClass = 'bg-rose-50/50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/40';
+            }
+
+            const item = document.createElement('div');
+            item.className = `p-3 rounded-2xl border ${bgClass} space-y-1`;
+            item.innerHTML = `
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <i class="fa-solid ${icon}"></i> ${n.title}
+                </span>
+                <span class="text-[10px] text-slate-400 font-mono">${n.time || ''}</span>
+              </div>
+              <p class="text-xs text-slate-600 dark:text-slate-300 leading-snug">${n.message}</p>
+            `;
+            list.appendChild(item);
+          });
+        }
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function openPolicyModal(type) {
+      const modal = document.getElementById('policyModal');
+      const titleEl = document.getElementById('policyModalTitle');
+      const bodyEl = document.getElementById('policyModalBody');
+      const p = (appState.settings && appState.settings.policies) ? appState.settings.policies : DEFAULT_DATA.settings.policies;
+
+      if (type === 'terms') {
+        titleEl.innerText = "Terms & Conditions";
+        bodyEl.innerText = p.terms || "Terms and conditions will be updated soon.";
+      } else if (type === 'privacy') {
+        titleEl.innerText = "Privacy Policy";
+        bodyEl.innerText = p.privacy || "Privacy policy will be updated soon.";
+      } else if (type === 'refund') {
+        titleEl.innerText = "Refund & Cancellation Policy";
+        bodyEl.innerText = p.refund || "Refund policy will be updated soon.";
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closePolicyModal() {
+      document.getElementById('policyModal').classList.add('hidden');
+    }
+
+    function checkAuthSession() {
+      const stored = localStorage.getItem('batchbite_user_session');
+      if (stored) {
+        currentUser = JSON.parse(stored);
+        document.getElementById('authScreen').classList.add('hidden');
+        updateUserProfileUI();
+        prefillUserInfo();
+        renderUserOrders();
+      } else {
+        document.getElementById('authScreen').classList.remove('hidden');
+      }
+    }
+
+    function updateUserProfileUI() {
+      if (!currentUser) return;
+      const dict = I18N[currentLang] || I18N.bn;
+      const name = currentUser.name || dict.defaultCustomer;
+      const phone = currentUser.phone || '01XXXXXXXXX';
+      const village = currentUser.village || 'Village';
+
+      document.getElementById('headerUserName').innerText = name;
+      document.getElementById('headerUserPhone').innerText = phone;
+      document.getElementById('dropUserName').innerText = name;
+      document.getElementById('dropUserPhone').innerText = phone;
+      document.getElementById('dropUserVillage').innerText = village;
+    }
+
+    function toggleProfileDropdown() {
+      document.getElementById('userProfileDropdown').classList.toggle('hidden');
+    }
+
+    window.addEventListener('click', function(e) {
+      const wrapper = document.getElementById('userProfileWrapper');
+      if (wrapper && !wrapper.contains(e.target)) {
+        document.getElementById('userProfileDropdown').classList.add('hidden');
+      }
+    });
+
+    function validateCurrentSession() {
+      if (!currentUser) return;
+      const refreshed = appState.users.find(u => u.email === currentUser.email);
+      if (!refreshed || refreshed.status !== 'approved') {
+        alert("Your account approval has been paused.");
+        handleUserLogout();
+      }
+    }
+
+    function switchAuthTab(tab) {
+      const alertBox = document.getElementById('authAlert');
+      alertBox.classList.add('hidden');
+      if (tab === 'login') {
+        document.getElementById('loginForm').classList.remove('hidden');
+        document.getElementById('registerForm').classList.add('hidden');
+        document.getElementById('authTabLogin').className = "flex-1 py-3 border-b-2 border-brand-600 text-brand-600 font-bold";
+        document.getElementById('authTabRegister').className = "flex-1 py-3 border-b-2 border-transparent text-slate-500 font-bold";
+      } else {
+        document.getElementById('loginForm').classList.add('hidden');
+        document.getElementById('registerForm').classList.remove('hidden');
+        document.getElementById('authTabRegister').className = "flex-1 py-3 border-b-2 border-brand-600 text-brand-600 font-bold";
+        document.getElementById('authTabLogin').className = "flex-1 py-3 border-b-2 border-transparent text-slate-500 font-bold";
+      }
+    }
+
+    function showAuthAlert(msg, type = 'error') {
+      const el = document.getElementById('authAlert');
+      el.classList.remove('hidden', 'bg-rose-100', 'text-rose-700', 'bg-emerald-100', 'text-emerald-700', 'bg-amber-100', 'text-amber-800');
+      if (type === 'error') el.classList.add('bg-rose-100', 'text-rose-700');
+      else if (type === 'warning') el.classList.add('bg-amber-100', 'text-amber-800');
+      else el.classList.add('bg-emerald-100', 'text-emerald-700');
+      el.innerHTML = msg;
+    }
+
+    function handleRegisterRequest(e) {
+      e.preventDefault();
+      const name = document.getElementById('regName').value.trim();
+      const phone = document.getElementById('regPhone').value.trim();
+      const village = document.getElementById('regVillage').value.trim();
+      const email = document.getElementById('regEmail').value.trim().toLowerCase();
+      const password = document.getElementById('regPassword').value;
+
+      const existing = (appState.users || []).find(u => u.email === email);
+      if (existing) {
+        showAuthAlert("This email is already registered!", "error");
+        return;
+      }
+
+      const newUser = {
+        id: 'USR-' + Date.now(),
+        name, phone, village, email, password,
+        status: 'pending',
+        createdAt: new Date().toLocaleString()
+      };
+
+      if (isFirebaseReady) {
+        db.ref('users/' + newUser.id).set(newUser);
+      } else {
+        if (!appState.users) appState.users = [];
+        appState.users.push(newUser);
+        localStorage.setItem('batchbite_data', JSON.stringify(appState));
+      }
+
+      document.getElementById('registerForm').reset();
+      showAuthAlert("Registration request sent! You can log in once approved by admin.", "warning");
+      setTimeout(() => switchAuthTab('login'), 3500);
+    }
+
+    function handleUserLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const pass = document.getElementById('loginPassword').value;
+
+      const user = (appState.users || []).find(u => u.email === email && u.password === pass);
+
+      if (!user) {
+        showAuthAlert("Invalid email or password! Please try again.", "error");
+        return;
+      }
+      if (user.status === 'pending') {
+        showAuthAlert("Your account is waiting for admin approval.", "warning");
+        return;
+      }
+      if (user.status === 'rejected') {
+        showAuthAlert("Your registration request was rejected.", "error");
+        return;
+      }
+
+      currentUser = user;
+      localStorage.setItem('batchbite_user_session', JSON.stringify(user));
+      document.getElementById('authScreen').classList.add('hidden');
+      updateUserProfileUI();
+      prefillUserInfo();
+      renderUserOrders();
+    }
+
+    function handleUserLogout() {
+      localStorage.removeItem('batchbite_user_session');
+      currentUser = null;
+      document.getElementById('authScreen').classList.remove('hidden');
+      document.getElementById('userProfileDropdown').classList.add('hidden');
+      switchAuthTab('login');
+    }
+
+    function prefillUserInfo() {
+      if (!currentUser) return;
+      if (document.getElementById('custName')) document.getElementById('custName').value = currentUser.name || '';
+      if (document.getElementById('custPhone')) document.getElementById('custPhone').value = currentUser.phone || '';
+      if (document.getElementById('custVillage')) document.getElementById('custVillage').value = currentUser.village || '';
+    }
+
+    function renderFooterLinks() {
+      const f = (appState.settings && appState.settings.footer) ? appState.settings.footer : DEFAULT_DATA.settings.footer;
+      const setAttr = (id, prop, val) => {
+        const el = document.getElementById(id);
+        if (el) el[prop] = val;
+      };
+
+      setAttr('linkFacebook', 'href', f.facebook || '#');
+      setAttr('linkTwitter', 'href', f.twitter || '#');
+      setAttr('linkInstagram', 'href', f.instagram || '#');
+      setAttr('linkMessenger', 'href', f.messenger || '#');
+      setAttr('linkWhatsApp', 'href', f.whatsapp || '#');
+      setAttr('linkTelegram', 'href', f.telegram || '#');
+      setAttr('linkYouTube', 'href', f.youtube || '#');
+
+      if (f.supportPhone) {
+        setAttr('footerPhoneDisplay', 'innerText', f.supportPhone);
+        setAttr('footerPhoneDisplay', 'href', `tel:${f.supportPhone}`);
+      }
+      if (f.aboutText) {
+        setAttr('footerAboutText', 'innerText', f.aboutText);
+      }
+
+      const brand = appState.settings.brandName || "BatchBite";
+      setAttr('footerBrandName', 'innerText', brand);
+      setAttr('copyrightBrand', 'innerText', brand);
+    }
+
+    function toggleMyOrdersModal(open) {
+      const modal = document.getElementById('myOrdersModal');
+      if (open) {
+        renderUserOrders();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function updateHeroCardUI() {
+      const s = appState.settings || {};
+      const dict = I18N[currentLang] || I18N.bn;
+
+      const badgeTextEl = document.getElementById('heroBadgeText');
+      if (badgeTextEl) {
+        badgeTextEl.innerText = s.heroBadge || dict.batchOpen;
+      }
+      const titleEl = document.getElementById('heroTitleDisplay');
+      if (titleEl) {
+        titleEl.innerText = s.heroTitle || dict.heroTitle;
+      }
+      const subtitleEl = document.getElementById('heroSubtitleDisplay');
+      if (subtitleEl) {
+        subtitleEl.innerText = s.heroSubtitle || dict.heroSubtitle;
+      }
+      const timerSubEl = document.getElementById('timerSubtext');
+      if (timerSubEl) {
+        timerSubEl.innerText = s.heroTimerSubtext || dict.timerSubtext;
+      }
+    }
+
+    function updateUIFromSettings() {
+      if (document.getElementById('brandName')) {
+        document.getElementById('brandName').innerText = appState.settings.brandName || "BatchBite";
+      }
+      if (document.getElementById('brandTagline')) {
+        document.getElementById('brandTagline').innerText = appState.settings.tagline || "";
+      }
+      updateHeroCardUI();
+    }
+
+    function checkTimeWindowEngine() {
+      const now = new Date();
+      const currentTimeInMinutes = (now.getHours() * 60) + now.getMinutes();
+
+      const [startH, startM] = (appState.settings.startTime || "16:00").split(':').map(Number);
+      const [endH, endM] = (appState.settings.endTime || "18:00").split(':').map(Number);
+
+      const startTimeInMinutes = (startH * 60) + startM;
+      const endTimeInMinutes = (endH * 60) + endM;
+
+      let isOpen = false;
+      if (appState.settings.manualOverride === 'open') isOpen = true;
+      else if (appState.settings.manualOverride === 'closed') isOpen = false;
+      else isOpen = (currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < endTimeInMinutes);
+
+      isStoreCurrentlyOpen = isOpen;
+
+      const banner = document.getElementById('statusBanner');
+      const bannerText = document.getElementById('bannerText');
+      const windowBadge = document.getElementById('windowBadge');
+      const timerLabel = document.getElementById('timerLabel');
+      const timerDisplay = document.getElementById('countdownTimer');
+      const submitOrderBtn = document.getElementById('submitOrderBtn');
+      const dict = I18N[currentLang] || I18N.bn;
+
+      const customBadgeText = (appState.settings && appState.settings.heroBadge) ? appState.settings.heroBadge : dict.batchOpen;
+
+      if (isOpen) {
+        banner.className = "py-2 px-3 sm:px-4 text-center text-xs sm:text-sm font-semibold bg-emerald-600 text-white flex items-center justify-center gap-2 shadow-sm";
+        bannerText.innerHTML = `<i class="fa-solid fa-circle-check"></i> Window OPEN! Dispatch at ${appState.settings.batchDeliveryTime}.`;
+        
+        windowBadge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-2";
+        windowBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> <span id="heroBadgeText">${customBadgeText}</span>`;
+        timerLabel.innerText = dict.timerCloses;
+
+        let targetEnd = new Date(now);
+        targetEnd.setHours(endH, endM, 0, 0);
+        let diffMs = targetEnd - now;
+        timerDisplay.innerText = diffMs <= 0 && appState.settings.manualOverride === 'open' ? "OPEN NOW" : formatDuration(diffMs);
+        if (submitOrderBtn) submitOrderBtn.disabled = false;
+      } else {
+        banner.className = "py-2 px-3 sm:px-4 text-center text-xs sm:text-sm font-semibold bg-rose-600 text-white flex items-center justify-center gap-2 shadow-sm";
+        bannerText.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> Ordering Closed. Preparing delivery.`;
+
+        windowBadge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 mb-2";
+        windowBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span> Closed`;
+        timerLabel.innerText = dict.timerNextWindow;
+
+        let targetStart = new Date(now);
+        targetStart.setHours(startH, startM, 0, 0);
+        if (targetStart < now) targetStart.setDate(targetStart.getDate() + 1);
+        let diffMs = targetStart - now;
+        timerDisplay.innerText = formatDuration(diffMs);
+        if (submitOrderBtn) submitOrderBtn.disabled = true;
+      }
+
+      document.getElementById('windowTimeDisplay').innerText = `${formatAMPM(startH, startM)} - ${formatAMPM(endH, endM)}`;
+      document.getElementById('batchDeliveryTimeDisplay').innerText = appState.settings.batchDeliveryTime;
+      document.getElementById('cartDeliveryTimeNotice').innerText = appState.settings.batchDeliveryTime;
+    }
+
+    function formatDuration(ms) {
+      if (ms < 0) return "00:00:00";
+      const totalSec = Math.floor(ms / 1000);
+      const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+      const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+      const s = String(totalSec % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function formatAMPM(hours, minutes) {
+      let h = hours % 12;
+      h = h ? h : 12;
+      const m = String(minutes).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      return `${h}:${m} ${ampm}`;
+    }
+
+    function renderMenu() {
+      const grid = document.getElementById('foodGrid');
+      grid.innerHTML = '';
+      const dict = I18N[currentLang] || I18N.bn;
+
+      const filtered = appState.menu.filter(item => {
+        return currentCategoryFilter === 'all' || item.category === currentCategoryFilter;
+      });
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="col-span-full py-12 text-center text-slate-400 font-medium">${dict.noFoodFound}</div>`;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const isOutOfStock = !item.available;
+        const disabled = !isStoreCurrentlyOpen || isOutOfStock;
+        const rating = Number(item.rating) || 5;
+
+        let starsHtml = '';
+        for (let s = 1; s <= 5; s++) {
+          if (s <= rating) starsHtml += `<i class="fa-solid fa-star text-amber-400"></i>`;
+          else starsHtml += `<i class="fa-regular fa-star text-slate-400/60"></i>`;
+        }
+
+        const card = document.createElement('div');
+        card.className = "bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm flex flex-col transition hover:shadow-md";
+        card.innerHTML = `
+          <div class="h-40 sm:h-44 w-full bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
+            <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80'}" alt="${item.title}" class="w-full h-full object-cover">
+            
+            <span class="absolute top-2.5 left-2.5 bg-white/95 dark:bg-slate-900/90 backdrop-blur-sm px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase text-slate-700 dark:text-slate-300 shadow-sm border border-slate-100 dark:border-slate-800">
+              ${item.category}
+            </span>
+
+            <div class="absolute top-2.5 right-2.5 bg-slate-900/85 backdrop-blur-md px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-xl flex items-center gap-1.5 shadow-md border border-amber-500/30">
+              <span class="animate-star-glow text-[11px] sm:text-xs flex gap-0.5">${starsHtml}</span>
+              <span class="text-[10px] font-black text-amber-300 ml-0.5">${rating}.0</span>
+            </div>
+
+            ${isOutOfStock ? `<span class="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center text-white text-xs font-bold uppercase">${dict.outOfStock}</span>` : ''}
+          </div>
+          <div class="p-3.5 sm:p-4 flex flex-col flex-grow justify-between space-y-3">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <h3 class="font-bold text-xs sm:text-sm text-slate-800 dark:text-white leading-snug line-clamp-1">${item.title}</h3>
+                <span class="font-extrabold text-sm sm:text-base text-brand-600 dark:text-brand-400 whitespace-nowrap">₹${item.price}</span>
+              </div>
+              <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">${item.desc || ''}</p>
+            </div>
+            
+            <button onclick="addToCart('${item.id}')" ${disabled ? 'disabled' : ''} class="w-full py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition ${
+              disabled 
+              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-200 dark:border-slate-700' 
+              : 'bg-brand-500 hover:bg-brand-600 text-white shadow-sm shadow-brand-500/30 active:scale-95'
+            }">
+              <i class="fa-solid fa-plus text-[10px]"></i>
+              <span>${!isStoreCurrentlyOpen ? dict.orderClosed : (isOutOfStock ? dict.outOfStock : dict.addToCart)}</span>
+            </button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function setCategoryFilter(category) {
+      currentCategoryFilter = category;
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.remove('bg-brand-600', 'text-white', 'shadow-sm');
+        btn.classList.add('bg-white', 'dark:bg-slate-900', 'text-slate-700', 'dark:text-slate-300');
+        if (btn.innerText.toLowerCase().includes(category.toLowerCase()) || (category === 'all' && btn.innerText.includes('All'))) {
+          btn.classList.add('bg-brand-600', 'text-white', 'shadow-sm');
+          btn.classList.remove('bg-white', 'dark:bg-slate-900', 'text-slate-700', 'dark:text-slate-300');
+        }
+      });
+      renderMenu();
+    }
+
+    function addToCart(itemId) {
+      if (!isStoreCurrentlyOpen) {
+        alert("Ordering window is closed!");
+        return;
+      }
+      const item = appState.menu.find(m => m.id === itemId);
+      if (!item || !item.available) return;
+
+      const existing = cart.find(c => c.id === itemId);
+      if (existing) existing.qty += 1;
+      else cart.push({ ...item, qty: 1 });
+
+      updateCartBadge();
+      renderCartItems();
+      toggleCartModal(true);
+    }
+
+    function changeCartQty(itemId, delta) {
+      const idx = cart.findIndex(c => c.id === itemId);
+      if (idx === -1) return;
+      cart[idx].qty += delta;
+      if (cart[idx].qty <= 0) cart.splice(idx, 1);
+      updateCartBadge();
+      renderCartItems();
+    }
+
+    function updateCartBadge() {
+      const count = cart.reduce((acc, curr) => acc + curr.qty, 0);
+      document.getElementById('cartCountBadge').innerText = count;
+
+      // Update mobile bottom floating cart bar
+      const mobileBar = document.getElementById('mobileCartBar');
+      const mobileCount = document.getElementById('mobileCartItemCount');
+      if (count > 0) {
+        mobileCount.innerText = count;
+        mobileBar.classList.remove('hidden');
+      } else {
+        mobileBar.classList.add('hidden');
+      }
+    }
+
+    function renderCartItems() {
+      const list = document.getElementById('cartItemsList');
+      list.innerHTML = '';
+      const dict = I18N[currentLang] || I18N.bn;
+
+      if (cart.length === 0) {
+        list.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
+            <i class="fa-solid fa-basket-shopping text-4xl mb-2 text-slate-300 dark:text-slate-700"></i>
+            <p class="text-sm font-semibold">${dict.emptyCart}</p>
+          </div>
+        `;
+        document.getElementById('cartSubtotal').innerText = '₹0';
+        document.getElementById('cartDeliveryFee').innerText = '₹0';
+        document.getElementById('cartCodFeeRow').classList.add('hidden');
+        document.getElementById('cartGrandTotal').innerText = '₹0';
+        if (document.getElementById('mobileCartTotalDisplay')) {
+          document.getElementById('mobileCartTotalDisplay').innerText = '₹0';
+        }
+        return;
+      }
+
+      let subtotal = 0;
+      cart.forEach(item => {
+        subtotal += item.price * item.qty;
+        const row = document.createElement('div');
+        row.className = "flex items-center justify-between gap-2.5 p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl";
+        row.innerHTML = `
+          <div class="flex-1 min-w-0">
+            <h4 class="text-xs font-bold text-slate-800 dark:text-white truncate">${item.title}</h4>
+            <span class="text-[11px] text-slate-500 dark:text-slate-400">₹${item.price} ${dict.each}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="flex items-center border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 overflow-hidden">
+              <button onclick="changeCartQty('${item.id}', -1)" class="w-6 h-6 flex items-center justify-center text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 font-bold">-</button>
+              <span class="w-6 text-center text-xs font-semibold text-slate-800 dark:text-white">${item.qty}</span>
+              <button onclick="changeCartQty('${item.id}', 1)" class="w-6 h-6 flex items-center justify-center text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 font-bold">+</button>
+            </div>
+            <span class="text-xs font-bold text-slate-800 dark:text-white min-w-[42px] text-right">₹${item.price * item.qty}</span>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+
+      const deliveryFee = Number(appState.settings.deliveryFee) || 0;
+      const selectedPay = document.querySelector('input[name="custPayment"]:checked');
+      const isCod = selectedPay && selectedPay.value === 'Cash on Delivery';
+      const pay = appState.settings.payment || DEFAULT_DATA.settings.payment;
+      const codExtra = (isCod && pay.codExtraFee) ? Number(pay.codExtraFee) : 0;
+
+      if (isCod && codExtra > 0) {
+        document.getElementById('cartCodFeeRow').classList.remove('hidden');
+        document.getElementById('cartCodFeeAmount').innerText = `+₹${codExtra}`;
+      } else {
+        document.getElementById('cartCodFeeRow').classList.add('hidden');
+      }
+
+      const grandTotal = subtotal + deliveryFee + codExtra;
+
+      document.getElementById('cartSubtotal').innerText = `₹${subtotal}`;
+      document.getElementById('cartDeliveryFee').innerText = deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`;
+      document.getElementById('cartGrandTotal').innerText = `₹${grandTotal}`;
+      if (document.getElementById('mobileCartTotalDisplay')) {
+        document.getElementById('mobileCartTotalDisplay').innerText = `₹${grandTotal}`;
+      }
+    }
+
+    function toggleCartModal(open) {
+      const modal = document.getElementById('cartModal');
+      if (open) {
+        updatePaymentMethodsAvailability();
+        renderCartItems();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function handlePlaceOrder(e) {
+      e.preventDefault();
+      if (!isStoreCurrentlyOpen) {
+        alert("Ordering window is closed!");
+        return;
+      }
+      if (cart.length === 0) {
+        alert("Cart is empty!");
+        return;
+      }
+
+      const termsAgreed = document.getElementById('termsAgreementCheckbox').checked;
+      if (!termsAgreed) {
+        alert("Please agree to the Terms & Policies before ordering.");
+        return;
+      }
+
+      const name = document.getElementById('custName').value.trim();
+      const phone = document.getElementById('custPhone').value.trim();
+      const village = document.getElementById('custVillage').value.trim();
+      const landmark = document.getElementById('custLandmark').value.trim();
+      const payment = document.querySelector('input[name="custPayment"]:checked').value;
+
+      let subtotal = cart.reduce((acc, c) => acc + (c.price * c.qty), 0);
+      let fee = Number(appState.settings.deliveryFee) || 0;
+      let pay = appState.settings.payment || DEFAULT_DATA.settings.payment;
+      let codFee = (payment === 'Cash on Delivery' && pay.codExtraFee) ? Number(pay.codExtraFee) : 0;
+      let finalAmount = subtotal + fee + codFee;
+
+      const orderObj = {
+        id: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
+        timestamp: new Date().toISOString(),
+        timeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        customer: { name, phone, village, landmark, email: currentUser ? currentUser.email : '' },
+        paymentMethod: payment,
+        items: [...cart],
+        subtotal: subtotal,
+        deliveryFee: fee,
+        codFee: codFee,
+        totalAmount: finalAmount,
+        status: "Pending",
+        paymentStatus: payment === 'Cash on Delivery' ? "Pending" : "Paid"
+      };
+
+      if (payment === 'Cash on Delivery') {
+        saveOrderAndFinish(orderObj);
+        return;
+      }
+
+      const rzpKey = (pay && pay.razorpayKeyId) ? pay.razorpayKeyId.trim() : '';
+      if (!rzpKey || rzpKey === 'rzp_test_YourKeyHere') {
+        alert("Please configure a valid Razorpay Key ID in settings.");
+        return;
+      }
+
+      if (typeof Razorpay === 'undefined') {
+        alert("Razorpay SDK failed to load. Please check internet connection.");
+        return;
+      }
+
+      const options = {
+        key: rzpKey,
+        amount: Math.round(finalAmount * 100),
+        currency: "INR",
+        name: pay.merchantName || appState.settings.brandName || "BatchBite Delivery",
+        description: `Order #${orderObj.id} - ${cart.length} item(s)`,
+        image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=80",
+        prefill: {
+          name: name,
+          contact: phone,
+          email: currentUser ? currentUser.email : ''
+        },
+        theme: {
+          color: "#ea580c"
+        },
+        handler: function (response) {
+          orderObj.paymentId = response.razorpay_payment_id;
+          orderObj.paymentStatus = "Paid";
+          saveOrderAndFinish(orderObj);
+        },
+        modal: {
+          ondismiss: function() {
+            alert("Payment was cancelled.");
+          }
+        }
+      };
+
+      try {
+        const rzp = new Razorpay(options);
+        rzp.on('payment.failed', function (response) {
+          alert("Payment Failed: " + (response.error.description || "Order not placed."));
+        });
+        rzp.open();
+      } catch (err) {
+        console.error("Razorpay Error:", err);
+        alert("Failed to initiate Razorpay.");
+      }
+    }
+
+    function saveOrderAndFinish(orderObj) {
+      if (isFirebaseReady) {
+        db.ref('orders/' + orderObj.id).set(orderObj);
+      } else {
+        if (!appState.orders) appState.orders = [];
+        appState.orders.unshift(orderObj);
+        localStorage.setItem('batchbite_data', JSON.stringify(appState));
+      }
+
+      cart = [];
+      document.getElementById('termsAgreementCheckbox').checked = false;
+      updateCartBadge();
+      toggleCartModal(false);
+      renderUserOrders();
+
+      alert(`🎉 Order placed successfully (#${orderObj.id})!\n\nDelivery Batch: ${appState.settings.batchDeliveryTime}`);
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
